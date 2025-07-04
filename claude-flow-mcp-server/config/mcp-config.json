@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "claude-flow": {
+      "command": "node",
+      "args": ["./server.js"],
+      "cwd": "./claude-flow-mcp-server",
+      "env": {
+        "CLAUDE_FLOW_PATH": "npx claude-flow",
+        "CLAUDE_FLOW_TIMEOUT": "30000",
+        "CLAUDE_FLOW_MAX_OUTPUT": "1048576",
+        "CLAUDE_FLOW_LOG_LEVEL": "info"
+      },
+      "capabilities": {
+        "tools": true,
+        "prompts": false,
+        "resources": false
+      },
+      "description": "Claude-Flow orchestration system MCP server"
+    }
+  }
+}

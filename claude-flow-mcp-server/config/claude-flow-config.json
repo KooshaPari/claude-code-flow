@@ -1,0 +1,62 @@
+{
+  "claudeFlow": {
+    "path": "npx claude-flow",
+    "timeout": 30000,
+    "maxOutputSize": 1048576,
+    "logLevel": "info",
+    "retries": 3,
+    "retryDelay": 1000
+  },
+  "mcp": {
+    "serverName": "claude-flow-mcp-server",
+    "version": "1.0.0",
+    "transport": "stdio",
+    "capabilities": {
+      "tools": true,
+      "prompts": false,
+      "resources": false
+    }
+  },
+  "tools": {
+    "enabled": [
+      "claude_flow_start",
+      "claude_flow_status",
+      "claude_flow_agent_spawn",
+      "claude_flow_agent_list",
+      "claude_flow_task_create",
+      "claude_flow_task_list",
+      "claude_flow_memory_store",
+      "claude_flow_memory_query",
+      "claude_flow_monitor",
+      "claude_flow_config_get",
+      "claude_flow_config_set",
+      "claude_flow_workflow_execute",
+      "claude_flow_session_list",
+      "claude_flow_execute_command"
+    ],
+    "disabled": []
+  },
+  "security": {
+    "allowedCommands": [
+      "start",
+      "status",
+      "agent",
+      "task",
+      "memory",
+      "monitor",
+      "config",
+      "session",
+      "workflow"
+    ],
+    "blockedCommands": [],
+    "maxExecutionTime": 300000,
+    "maxOutputSize": 10485760
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "destination": "stderr",
+    "includeTimestamp": true,
+    "includeLevel": true
+  }
+}
