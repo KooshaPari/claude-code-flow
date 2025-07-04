@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "claude-flow": {
+      "command": "node",
+      "args": [
+        "/mnt/persist/workspace/claude-flow-mcp-server/server.js"
+      ],
+      "env": {
+        "CLAUDE_FLOW_PATH": "/home/augment-agent/.local/bin/klaude",
+        "CLAUDE_FLOW_TIMEOUT": "30000",
+        "CLAUDE_FLOW_LOG_LEVEL": "info"
+      },
+      "capabilities": {
+        "tools": true,
+        "prompts": false,
+        "resources": false
+      },
+      "description": "Claude-Flow orchestration system MCP server"
+    }
+  }
+}

@@ -1,0 +1,106 @@
+#!/usr/bin/env node
+
+/**
+ * Global klaude binary - Claude-Flow CLI wrapper
+ * This provides a global 'klaude' command that wraps claude-flow functionality
+ */
+
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Get the directory where this script is located
+const scriptDir = __dirname;
+
+// Try different CLI entry points in order of preference
+const cliOptions = [
+  path.join(scriptDir, 'src', 'cli', 'simple-cli.js'),
+  path.join(scriptDir, 'cli.js'),
+  path.join(scriptDir, 'src', 'cli', 'main.ts')
+];
+
+function findWorkingCli() {
+  for (const cliPath of cliOptions) {
+    if (fs.existsSync(cliPath)) {
+      return cliPath;
+    }
+  }
+  return null;
+}
+
+function runCli() {
+  const cliPath = findWorkingCli();
+  
+  if (!cliPath) {
+    console.error('❌ Error: Could not find claude-flow CLI implementation');
+    console.error('Expected one of:');
+    cliOptions.forEach(opt => console.error(`  - ${opt}`));
+    process.exit(1);
+  }
+
+  // Determine how to run the CLI
+  let command, args;
+  
+  if (cliPath.endsWith('.js')) {
+    command = 'node';
+    args = [cliPath, ...process.argv.slice(2)];
+  } else if (cliPath.endsWith('.ts')) {
+    // Try tsx first, then npx tsx
+    command = 'npx';
+    args = ['tsx', cliPath, ...process.argv.slice(2)];
+  }
+
+  console.log(`🚀 Running klaude via: ${command} ${args[0]}`);
+
+  const child = spawn(command, args, {
+    stdio: 'inherit',
+    cwd: scriptDir
+  });
+
+  child.on('error', (error) => {
+    console.error('❌ Failed to run klaude:', error.message);
+    if (cliPath.endsWith('.ts')) {
+      console.log('\n💡 Try installing tsx: npm install -g tsx');
+    }
+    process.exit(1);
+  });
+
+  child.on('exit', (code) => {
+    process.exit(code || 0);
+  });
+}
+
+// Show help if no arguments
+if (process.argv.length === 2) {
+  console.log(`
+🤖 Klaude - Claude-Flow CLI
+
+Usage: klaude <command> [options]
+
+Available commands:
+  start         Start the orchestration system
+  mcp           MCP server operations
+  agent         Agent management
+  swarm         Swarm operations
+  sparc         SPARC methodology tools
+  status        Show system status
+  help          Show help information
+
+Examples:
+  klaude start                    # Start the system
+  klaude mcp serve               # Start MCP server
+  klaude agent create myagent    # Create an agent
+  klaude status                  # Check status
+  klaude help                    # Show detailed help
+
+For more information: klaude help
+`);
+  process.exit(0);
+}
+
+runCli();
