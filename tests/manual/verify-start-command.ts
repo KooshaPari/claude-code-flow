@@ -3,7 +3,7 @@
  * Verification script for start command consolidation
  */
 
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../src/utils/colors.js';
 
 async function runTest(name: string, fn: () => Promise<boolean>): Promise<void> {
   try {

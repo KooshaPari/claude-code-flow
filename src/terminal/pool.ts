@@ -192,7 +192,7 @@ export class TerminalPool {
 
     // Remove dead terminals
     const deadTerminals: string[] = [];
-    for (const [id, pooled] of this.terminals.entries()) {
+    for (const [id, pooled] of Array.from(this.terminals.entries())) {
       if (!pooled.terminal.isAlive()) {
         deadTerminals.push(id);
       }
@@ -232,7 +232,7 @@ export class TerminalPool {
     const now = Date.now();
     const staleTimeout = 300000; // 5 minutes
     
-    for (const [id, pooled] of this.terminals.entries()) {
+    for (const [id, pooled] of Array.from(this.terminals.entries())) {
       if (!pooled.inUse && pooled.terminal.isAlive()) {
         const idleTime = now - pooled.lastUsed.getTime();
         if (idleTime > staleTimeout) {

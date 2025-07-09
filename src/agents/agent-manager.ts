@@ -191,25 +191,38 @@ export class AgentManager extends EventEmitter {
   }
 
   private setupEventHandlers(): void {
-    this.eventBus.on('agent:heartbeat', (data) => {
-      this.handleHeartbeat(data);
+    this.eventBus.on('agent:heartbeat', (data: unknown) => {
+      if (data && typeof data === 'object' && 'agentId' in data) {
+        this.handleHeartbeat(data as { agentId: string; timestamp: Date; metrics?: AgentMetrics });
+      }
     });
 
-    this.eventBus.on('agent:error', (data) => {
-      this.handleAgentError(data);
+    this.eventBus.on('agent:error', (data: unknown) => {
+      if (data && typeof data === 'object' && 'agentId' in data && 'error' in data) {
+        this.handleAgentError(data as { agentId: string; error: AgentError });
+      }
     });
 
-    this.eventBus.on('task:assigned', (data) => {
-      this.updateAgentWorkload(data.agentId, 1);
+    this.eventBus.on('task:assigned', (data: unknown) => {
+      if (data && typeof data === 'object' && 'agentId' in data) {
+        const taskData = data as { agentId: string };
+        this.updateAgentWorkload(taskData.agentId, 1);
+      }
     });
 
-    this.eventBus.on('task:completed', (data) => {
-      this.updateAgentWorkload(data.agentId, -1);
-      this.updateAgentMetrics(data.agentId, data.metrics);
+    this.eventBus.on('task:completed', (data: unknown) => {
+      if (data && typeof data === 'object' && 'agentId' in data) {
+        const taskData = data as { agentId: string; metrics?: AgentMetrics };
+        this.updateAgentWorkload(taskData.agentId, -1);
+        if (taskData.metrics) {
+          this.updateAgentMetrics(taskData.agentId, taskData.metrics);
+        }
+      }
     });
 
     this.eventBus.on('resource:usage', (data) => {
-      this.updateResourceUsage(data.agentId, data.usage);
+      const resourceData = data as { agentId: string; usage: { cpu: number; memory: number; disk: number } };
+      this.updateResourceUsage(resourceData.agentId, resourceData.usage);
     });
   }
 
@@ -448,8 +461,33 @@ export class AgentManager extends EventEmitter {
       metrics: this.createDefaultMetrics(),
       workload: 0,
       health: 1.0,
-      config: { ...template.config, ...overrides.config },
-      environment: { ...template.environment, ...overrides.environment },
+      config: {
+        autonomyLevel: template.config.autonomyLevel ?? 0.7,
+        learningEnabled: template.config.learningEnabled ?? true,
+        adaptationEnabled: template.config.adaptationEnabled ?? true,
+        maxTasksPerHour: template.config.maxTasksPerHour ?? 10,
+        maxConcurrentTasks: template.config.maxConcurrentTasks ?? 3,
+        timeoutThreshold: template.config.timeoutThreshold ?? 300000,
+        reportingInterval: template.config.reportingInterval ?? 30000,
+        heartbeatInterval: template.config.heartbeatInterval ?? 15000,
+        permissions: template.config.permissions ?? [],
+        trustedAgents: template.config.trustedAgents ?? [],
+        expertise: template.config.expertise ?? {},
+        preferences: template.config.preferences ?? {},
+        ...overrides.config
+      },
+      environment: {
+        runtime: template.environment.runtime ?? 'node',
+        version: template.environment.version ?? '1.0.0',
+        workingDirectory: template.environment.workingDirectory ?? process.cwd(),
+        tempDirectory: template.environment.tempDirectory ?? '/tmp',
+        logDirectory: template.environment.logDirectory ?? './logs',
+        apiEndpoints: template.environment.apiEndpoints ?? {},
+        credentials: template.environment.credentials ?? {},
+        availableTools: template.environment.availableTools ?? [],
+        toolConfigs: template.environment.toolConfigs ?? {},
+        ...overrides.environment
+      },
       endpoints: [],
       lastHeartbeat: new Date(),
       taskHistory: [],
@@ -509,10 +547,11 @@ export class AgentManager extends EventEmitter {
 
     } catch (error) {
       agent.status = 'error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.addAgentError(agentId, {
         timestamp: new Date(),
         type: 'startup_failed',
-        message: error.message,
+        message: errorMessage,
         context: { agentId },
         severity: 'critical',
         resolved: false
@@ -909,8 +948,8 @@ export class AgentManager extends EventEmitter {
   // === UTILITY METHODS ===
 
   private async spawnAgentProcess(agent: AgentState): Promise<ChildProcess> {
-    const env = {
-      ...process.env,
+    const env: Record<string, string> = {
+      ...(process.env as Record<string, string>),
       AGENT_ID: agent.id.id,
       AGENT_TYPE: agent.type,
       AGENT_NAME: agent.name,
@@ -926,22 +965,22 @@ export class AgentManager extends EventEmitter {
       JSON.stringify(agent.config)
     ];
 
-    const process = spawn(agent.environment.runtime, args, {
-      env,
+    const childProcess = spawn(agent.environment.runtime, args, {
+      env: env,
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: agent.environment.workingDirectory
     });
 
     // Handle process events
-    process.on('exit', (code) => {
+    childProcess.on('exit', (code: number | null) => {
       this.handleProcessExit(agent.id.id, code);
     });
 
-    process.on('error', (error) => {
+    childProcess.on('error', (error: Error) => {
       this.handleProcessError(agent.id.id, error);
     });
 
-    return process;
+    return childProcess;
   }
 
   private async waitForAgentReady(agentId: string, timeout: number): Promise<void> {
@@ -950,8 +989,9 @@ export class AgentManager extends EventEmitter {
         reject(new Error(`Agent ${agentId} startup timeout`));
       }, timeout);
 
-      const handler = (data: { agentId: string }) => {
-        if (data.agentId === agentId) {
+      const handler = (data: unknown) => {
+        const agentData = data as { agentId: string };
+        if (agentData.agentId === agentId) {
           clearTimeout(timer);
           this.eventBus.off('agent:ready', handler);
           resolve();
@@ -1174,6 +1214,13 @@ export class AgentManager extends EventEmitter {
   }
 
   // === PUBLIC API ===
+
+  /**
+   * Get the memory system instance
+   */
+  getMemory(): DistributedMemorySystem {
+    return this.memory;
+  }
 
   getAgent(agentId: string): AgentState | undefined {
     return this.agents.get(agentId);

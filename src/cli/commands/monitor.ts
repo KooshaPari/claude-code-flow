@@ -3,9 +3,11 @@
  */
 
 import { Command } from '@cliffy/command';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
 import { Table } from '@cliffy/table';
 import { formatProgressBar, formatDuration, formatStatusIndicator } from '../formatter.js';
+import { existsSync } from 'node:fs';
+import { fs, stdio, signals, processInfo } from '../../utils/runtime.js';
 
 export const monitorCommand = new Command()
   .description('Start live monitoring dashboard')
@@ -31,28 +33,50 @@ interface MonitorData {
   events: any[];
 }
 
+interface AlertData {
+  id: string;
+  type: 'info' | 'warning' | 'error' | 'critical';
+  message: string;
+  component: string;
+  timestamp: number;
+  acknowledged: boolean;
+}
+
+interface ComponentStatus {
+  status: string;
+  load: number;
+  uptime: number;
+  errors: number;
+  lastError?: string;
+}
+
 class Dashboard {
   private data: MonitorData[] = [];
   private maxDataPoints = 60; // 2 minutes at 2-second intervals
   private running = true;
+  
+  // Missing properties
+  public alerts: AlertData[] = [];
+  public startTime: number = Date.now();
+  private exportDataArray: MonitorData[] = [];
 
   constructor(private options: any) {}
 
   async start(): Promise<void> {
     // Hide cursor and clear screen
-    Deno.stdout.writeSync(new TextEncoder().encode('\x1b[?25l'));
+    stdio.stdout.write('\x1b[?25l');
     console.clear();
 
     // Setup signal handlers
     const cleanup = () => {
       this.running = false;
-      Deno.stdout.writeSync(new TextEncoder().encode('\x1b[?25h')); // Show cursor
+      stdio.stdout.write('\x1b[?25h'); // Show cursor
       console.log('\n' + colors.gray('Monitor stopped'));
-      Deno.exit(0);
+      processInfo.exit(0);
     };
 
-    Deno.addSignalListener('SIGINT', cleanup);
-    Deno.addSignalListener('SIGTERM', cleanup);
+    signals.addListener('SIGINT', cleanup);
+    signals.addListener('SIGTERM', cleanup);
 
     // Start monitoring loop
     await this.monitoringLoop();
@@ -143,12 +167,12 @@ class Dashboard {
 
   private renderHeader(data: MonitorData): void {
     const time = data.timestamp.toLocaleTimeString();
-    console.log(colors.cyan.bold('Claude-Flow Live Monitor') + colors.gray(` - ${time}`));
+    console.log((colors.cyan?.bold?.('Claude-Flow Live Monitor') || 'Claude-Flow Live Monitor') + (colors.gray?.(` - ${time}`) || ` - ${time}`));
     console.log('═'.repeat(80));
   }
 
   private renderSystemOverview(data: MonitorData): void {
-    console.log(colors.white.bold('System Overview'));
+    console.log(colors.white?.bold?.('System Overview') || 'System Overview');
     console.log('─'.repeat(40));
     
     const cpuBar = formatProgressBar(data.system.cpu, 100, 20, 'CPU');
@@ -162,7 +186,7 @@ class Dashboard {
   }
 
   private renderComponentsStatus(data: MonitorData): void {
-    console.log(colors.white.bold('Components'));
+    console.log(colors.white?.bold?.('Components') || 'Components');
     console.log('─'.repeat(40));
     
     const table = new Table()
@@ -186,7 +210,7 @@ class Dashboard {
 
   private renderAgentsAndTasks(data: MonitorData): void {
     // Agents table
-    console.log(colors.white.bold('Active Agents'));
+    console.log(colors.white?.bold?.('Active Agents') || 'Active Agents');
     console.log('─'.repeat(40));
     
     if (data.agents.length > 0) {
@@ -212,7 +236,7 @@ class Dashboard {
     console.log();
 
     // Recent tasks
-    console.log(colors.white.bold('Recent Tasks'));
+    console.log(colors.white?.bold?.('Recent Tasks') || 'Recent Tasks');
     console.log('─'.repeat(40));
     
     if (data.tasks.length > 0) {
@@ -239,7 +263,7 @@ class Dashboard {
   }
 
   private renderRecentEvents(data: MonitorData): void {
-    console.log(colors.white.bold('Recent Events'));
+    console.log(colors.white?.bold?.('Recent Events') || 'Recent Events');
     console.log('─'.repeat(40));
     
     if (data.events.length > 0) {
@@ -255,7 +279,7 @@ class Dashboard {
   }
 
   private renderPerformanceGraphs(): void {
-    console.log(colors.white.bold('Performance (Last 60s)'));
+    console.log(colors.white?.bold?.('Performance (Last 60s)') || 'Performance (Last 60s)');
     console.log('─'.repeat(40));
     
     if (this.data.length >= 2) {
@@ -279,7 +303,7 @@ class Dashboard {
       return;
     }
 
-    console.log(colors.white.bold(`${componentName} Details`));
+    console.log(colors.white?.bold?.(`${componentName} Details`) || `${componentName} Details`);
     console.log('─'.repeat(40));
     
     const statusIcon = formatStatusIndicator(component.status);
@@ -298,7 +322,7 @@ class Dashboard {
 
   private renderError(error: any): void {
     console.clear();
-    console.log(colors.red.bold('Monitor Error'));
+    console.log(colors.red?.bold?.('Monitor Error') || 'Monitor Error');
     console.log('─'.repeat(40));
     
     if ((error as Error).message.includes('ECONNREFUSED')) {
@@ -506,20 +530,27 @@ class Dashboard {
       .slice(-10); // Keep max 10 alerts
   }
   
+  /**
+   * Export monitoring data to file
+   */
+  exportData(): Promise<void> {
+    return this.exportMonitoringData();
+  }
+  
   private async exportMonitoringData(): Promise<void> {
     try {
       const exportData = {
         metadata: {
           exportTime: new Date().toISOString(),
           duration: formatDuration(Date.now() - this.startTime),
-          dataPoints: this.exportData.length,
+          dataPoints: this.exportDataArray.length,
           interval: this.options.interval
         },
-        data: this.exportData,
+        data: this.exportDataArray,
         alerts: this.alerts
       };
       
-      await Deno.writeTextFile(this.options.export, JSON.stringify(exportData, null, 2));
+      await fs.writeTextFile(this.options.export, JSON.stringify(exportData, null, 2));
       console.log(colors.green(`✓ Monitoring data exported to ${this.options.export}`));
     } catch (error) {
       console.error(colors.red('Failed to export data:'), (error as Error).message);
@@ -542,8 +573,8 @@ async function startMonitorDashboard(options: any): Promise<void> {
   if (options.export) {
     // Check if export path is writable
     try {
-      await Deno.writeTextFile(options.export, '');
-      await Deno.remove(options.export);
+      await fs.writeTextFile(options.export, '');
+      await fs.remove(options.export);
     } catch {
       console.error(colors.red(`Cannot write to export file: ${options.export}`));
       return;

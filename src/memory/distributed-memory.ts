@@ -316,6 +316,17 @@ export class DistributedMemorySystem extends EventEmitter {
 
   // === ENTRY OPERATIONS ===
 
+  /**
+   * Get an entry by key - alias for retrieve method
+   */
+  async get(key: string, options?: {
+    partition?: string;
+    consistency?: ConsistencyLevel;
+    maxAge?: number;
+  }): Promise<MemoryEntry | null> {
+    return this.retrieve(key, options);
+  }
+
   async store(
     key: string,
     value: any,

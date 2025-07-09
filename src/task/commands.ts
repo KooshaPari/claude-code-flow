@@ -5,6 +5,7 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
+import type { CommanderCommand } from '../types/command-compat.js';
 import { TaskEngine, WorkflowTask, TaskFilter, TaskSort, Workflow, ResourceRequirement, TaskSchedule } from './engine.js';
 import { generateId } from '../utils/helpers.js';
 
@@ -17,8 +18,8 @@ export interface TaskCommandContext {
 /**
  * Task Create Command - Create tasks with dependencies, priority, scheduling, resource requirements
  */
-export function createTaskCreateCommand(context: TaskCommandContext): Command {
-  return new Command('create')
+export function createTaskCreateCommand(context: TaskCommandContext): CommanderCommand {
+  const command = new Command('create')
     .description('Create a new task with comprehensive options')
     .argument('<type>', 'Task type (e.g., research, development, analysis)')
     .argument('<description>', 'Task description')
@@ -186,13 +187,15 @@ export function createTaskCreateCommand(context: TaskCommandContext): Command {
         console.error(chalk.red('❌ Error creating task:'), error instanceof Error ? error.message : error);
       }
     });
+
+  return command as CommanderCommand;
 }
 
 /**
  * Task List Command - Display tasks with filtering, sorting, dependency visualization
  */
-export function createTaskListCommand(context: TaskCommandContext): Command {
-  return new Command('list')
+export function createTaskListCommand(context: TaskCommandContext): CommanderCommand {
+  const command = new Command('list')
     .description('List tasks with filtering, sorting, and visualization options')
     .option('-s, --status <status>', 'Filter by status (pending,queued,running,completed,failed,cancelled)')
     .option('-a, --agent <agent>', 'Filter by assigned agent')
@@ -301,13 +304,15 @@ export function createTaskListCommand(context: TaskCommandContext): Command {
         console.error(chalk.red('❌ Error listing tasks:'), error instanceof Error ? error.message : error);
       }
     });
+
+  return command as CommanderCommand;
 }
 
 /**
  * Task Status Command - Detailed task status with progress tracking, performance metrics
  */
-export function createTaskStatusCommand(context: TaskCommandContext): Command {
-  return new Command('status')
+export function createTaskStatusCommand(context: TaskCommandContext): CommanderCommand {
+  const command = new Command('status')
     .description('Get detailed task status with progress and metrics')
     .argument('<task-id>', 'Task ID to check status')
     .option('--show-logs', 'Show execution logs')
@@ -442,7 +447,8 @@ export function createTaskStatusCommand(context: TaskCommandContext): Command {
           // Error info
           if (task.error) {
             console.log(chalk.red('\n❌ Error:'));
-            console.log(chalk.red(`  ${task.error.message}`));
+            const errorMessage = task.error instanceof Error ? task.error.message : String(task.error);
+            console.log(chalk.red(`  ${errorMessage}`));
           }
 
           console.log(''.padEnd(60, '='));
@@ -478,13 +484,15 @@ export function createTaskStatusCommand(context: TaskCommandContext): Command {
         console.error(chalk.red('❌ Error getting task status:'), error instanceof Error ? error.message : error);
       }
     });
+
+  return command as CommanderCommand;
 }
 
 /**
  * Task Cancel Command - Safe task cancellation with rollback and cleanup
  */
-export function createTaskCancelCommand(context: TaskCommandContext): Command {
-  return new Command('cancel')
+export function createTaskCancelCommand(context: TaskCommandContext): CommanderCommand {
+  const command = new Command('cancel')
     .description('Cancel a task with optional rollback and cleanup')
     .argument('<task-id>', 'Task ID to cancel')
     .option('-r, --reason <reason>', 'Cancellation reason', 'User requested')
@@ -577,13 +585,15 @@ export function createTaskCancelCommand(context: TaskCommandContext): Command {
         console.error(chalk.red('❌ Error cancelling task:'), error instanceof Error ? error.message : error);
       }
     });
+
+  return command as CommanderCommand;
 }
 
 /**
  * Task Workflow Command - Workflow execution engine with parallel processing
  */
-export function createTaskWorkflowCommand(context: TaskCommandContext): Command {
-  return new Command('workflow')
+export function createTaskWorkflowCommand(context: TaskCommandContext): CommanderCommand {
+  const command = new Command('workflow')
     .description('Execute and manage workflows with parallel processing')
     .addCommand(
       new Command('create')
@@ -694,6 +704,8 @@ export function createTaskWorkflowCommand(context: TaskCommandContext): Command 
           }
         })
     );
+
+  return command as CommanderCommand;
 }
 
 // Helper functions for display

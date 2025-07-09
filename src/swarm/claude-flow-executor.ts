@@ -73,15 +73,26 @@ export class ClaudeFlowExecutor {
           executionTime,
           sparcMode,
           command: command.join(' '),
-          exitCode: result.exitCode,
-          quality: 0.95,
-          completeness: 0.9
+          exitCode: result.exitCode
         },
-        error: result.error
+        quality: 0.95,
+        completeness: 0.9,
+        accuracy: 0.9,
+        executionTime,
+        resourcesUsed: {
+          cpuTime: executionTime,
+          memoryUsage: 0,
+          diskUsage: 0,
+          networkUsage: 0
+        },
+        validated: result.exitCode === 0,
+        validationResults: result.error || null,
+        recommendations: [],
+        nextSteps: []
       };
     } catch (error) {
       this.logger.error('Failed to execute Claude Flow SPARC command', { 
-        error: error.message,
+        error: (error as Error).message,
         taskId: task.id.id 
       });
       
@@ -89,11 +100,17 @@ export class ClaudeFlowExecutor {
         output: '',
         artifacts: {},
         metadata: {
-          executionTime: Date.now() - startTime,
-          quality: 0,
-          completeness: 0
+          error: (error as Error).message
         },
-        error: error.message
+        quality: 0,
+        completeness: 0,
+        accuracy: 0,
+        executionTime: Date.now() - startTime,
+        resourcesUsed: {},
+        validated: false,
+        validationResults: (error as Error).message,
+        recommendations: ['Check error logs and retry'],
+        nextSteps: ['Fix the underlying issue']
       };
     }
   }
@@ -143,8 +160,8 @@ export class ClaudeFlowExecutor {
       return 'integration';
     }
 
-    // Use agent type first, then task type
-    return modeMap[agent.type] || modeMap[task.type] || 'code';
+    // Use agent type first, then task type, with safe indexing
+    return (modeMap as any)[agent.type] || (modeMap as any)[task.type] || 'code';
   }
 
   private buildSparcCommand(task: TaskDefinition, mode: string, targetDir?: string): string[] {
@@ -215,7 +232,7 @@ export class ClaudeFlowExecutor {
         // Parse artifacts from output
         const artifactMatch = chunk.match(/Created file: (.+)/g);
         if (artifactMatch) {
-          artifactMatch.forEach(match => {
+          artifactMatch.forEach((match: any) => {
             const filePath = match.replace('Created file: ', '').trim();
             artifacts[filePath] = true;
           });

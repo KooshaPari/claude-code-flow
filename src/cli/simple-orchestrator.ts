@@ -379,9 +379,10 @@ function startWebUI(host: string, port: number) {
       
       executeCliCommand(command, null);
       
-      res.json({ success: true, message: 'Command executed' });
+      return res.json({ success: true, message: 'Command executed' });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return res.status(500).json({ error: errorMessage });
     }
   });
   
@@ -448,9 +449,10 @@ function startWebUI(host: string, port: number) {
           handleCliCommand(data.data, ws);
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         ws.send(JSON.stringify({
           type: 'error',
-          data: `Invalid message format: ${error.message}`
+          data: `Invalid message format: ${errorMessage}`
         }));
       }
     });
@@ -493,7 +495,8 @@ function startWebUI(host: string, port: number) {
       executeCliCommand(command, ws);
       
     } catch (error) {
-      const errorMsg = `Error executing command: ${error.message}`;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMsg = `Error executing command: ${errorMessage}`;
       outputHistory.push(errorMsg);
       sendResponse(ws, {
         type: 'error',
@@ -614,7 +617,8 @@ function startWebUI(host: string, port: number) {
     });
     
     child.on('error', (error) => {
-      const errorMsg = `<span class="error">Failed to execute command: ${error.message}</span>`;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMsg = `<span class="error">Failed to execute command: ${errorMessage}</span>`;
       outputHistory.push(errorMsg);
       
       sendResponse(ws, {
@@ -666,7 +670,8 @@ function startWebUI(host: string, port: number) {
         componentStatus.webUI = false;
         reject(err);
       } else {
-        console.error('❌ Web UI server error:', err.message);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error('❌ Web UI server error:', errorMessage);
         reject(err);
       }
     });
@@ -725,7 +730,8 @@ export async function startOrchestrator(options: any) {
         console.log('\n⚠️  Web UI could not start due to port conflict');
         console.log('   Orchestrator is running without Web UI');
       } else {
-        console.error('\n⚠️  Web UI failed to start:', err.message);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error('\n⚠️  Web UI failed to start:', errorMessage);
       }
     }
   }

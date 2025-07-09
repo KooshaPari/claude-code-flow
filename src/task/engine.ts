@@ -34,7 +34,7 @@ export interface TaskSchedule {
   timezone?: string;
 }
 
-export interface WorkflowTask extends Task {
+export interface WorkflowTask extends Omit<Task, 'dependencies'> {
   dependencies: TaskDependency[];
   resourceRequirements: ResourceRequirement[];
   schedule?: TaskSchedule;
@@ -636,8 +636,8 @@ export class TaskEngine extends EventEmitter {
     return (
       task.description.toLowerCase().includes(searchLower) ||
       task.type.toLowerCase().includes(searchLower) ||
-      task.tags.some(tag => tag.toLowerCase().includes(searchLower)) ||
-      (task.assignedAgent && task.assignedAgent.toLowerCase().includes(searchLower))
+      (task.tags || []).some(tag => tag.toLowerCase().includes(searchLower)) ||
+      (task.assignedAgent ? task.assignedAgent.toLowerCase().includes(searchLower) : false)
     );
   }
 
@@ -674,14 +674,15 @@ export class TaskEngine extends EventEmitter {
     if (!task) return;
 
     // Implement retry logic based on retryPolicy
-    if (task.retryPolicy && (task.metadata?.retryCount || 0) < task.retryPolicy.maxAttempts) {
-      task.metadata = { ...task.metadata, retryCount: (task.metadata?.retryCount || 0) + 1 };
+    const currentRetryCount = typeof task.metadata?.retryCount === 'number' ? task.metadata.retryCount : 0;
+    if (task.retryPolicy && currentRetryCount < task.retryPolicy.maxAttempts) {
+      task.metadata = { ...task.metadata, retryCount: currentRetryCount + 1 };
       task.status = 'pending';
       
       // Schedule retry with backoff
       setTimeout(() => {
         this.scheduleTask(task);
-      }, task.retryPolicy!.backoffMs * Math.pow(task.retryPolicy!.backoffMultiplier, task.metadata.retryCount - 1));
+      }, task.retryPolicy!.backoffMs * Math.pow(task.retryPolicy!.backoffMultiplier, currentRetryCount - 1));
     }
   }
 

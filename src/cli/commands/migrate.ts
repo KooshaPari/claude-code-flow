@@ -2,7 +2,7 @@
  * Migration CLI Command Integration
  */
 
-import { Command } from 'commander';
+import { Command } from '@cliffy/command';
 import { MigrationRunner } from '../../migration/migration-runner';
 import { MigrationAnalyzer } from '../../migration/migration-analyzer';
 import { RollbackManager } from '../../migration/rollback-manager';

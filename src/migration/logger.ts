@@ -4,7 +4,7 @@
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 
 export interface LogEntry {
   timestamp: Date;
@@ -79,7 +79,8 @@ export class MigrationLogger {
       await fs.appendFile(this.logFile, logLine);
     } catch (error) {
       // Prevent recursive logging
-      console.error('Failed to write to log file:', error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Failed to write to log file:', errorMessage);
     }
   }
 

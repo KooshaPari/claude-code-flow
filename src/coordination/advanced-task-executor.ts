@@ -214,15 +214,15 @@ export class AdvancedTaskExecutor extends EventEmitter {
           taskId: task.id.id,
           attempt: retryCount,
           maxRetries,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
 
         // Check if we should retry
         if (retryCount > maxRetries) {
           const taskError: TaskError = {
             type: 'execution_failed',
-            message: error.message,
-            stack: error.stack,
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
             context: {
               retryCount,
               maxRetries,
@@ -394,7 +394,12 @@ export class AdvancedTaskExecutor extends EventEmitter {
           completeness: output.completeness || 1.0,
           accuracy: output.accuracy || 0.9,
           executionTime,
-          resourcesUsed: context.resources,
+          resourcesUsed: {
+            memory: context.resources.memory,
+            cpu: context.resources.cpu,
+            disk: context.resources.disk,
+            network: context.resources.network
+          },
           validated: false
         };
       } catch (error) {
@@ -406,7 +411,12 @@ export class AdvancedTaskExecutor extends EventEmitter {
           completeness: 1.0,
           accuracy: 0.7,
           executionTime,
-          resourcesUsed: context.resources,
+          resourcesUsed: {
+            memory: context.resources.memory,
+            cpu: context.resources.cpu,
+            disk: context.resources.disk,
+            network: context.resources.network
+          },
           validated: false
         };
       }
@@ -501,7 +511,7 @@ export class AdvancedTaskExecutor extends EventEmitter {
         } catch (error) {
           this.logger.warn('Failed to get resource usage', {
             taskId,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
           });
         }
       }
@@ -607,7 +617,7 @@ export class AdvancedTaskExecutor extends EventEmitter {
     queuedTasks: number;
     maxConcurrentTasks: number;
     totalCapacity: number;
-    resourceLimits: typeof this.config.resourceLimits;
+    resourceLimits: TaskExecutorConfig['resourceLimits'];
     circuitBreakers: Record<string, any>;
   } {
     return {

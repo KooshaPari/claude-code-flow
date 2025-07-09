@@ -197,38 +197,38 @@ export class RealTimeMonitor extends EventEmitter {
   private setupEventHandlers(): void {
     // Agent events
     this.eventBus.on('agent:metrics-update', (data) => {
-      this.updateAgentMetrics(data.agentId, data.metrics);
+      this.updateAgentMetrics((data as any).agentId, (data as any).metrics);
     });
 
     this.eventBus.on('agent:status-changed', (data) => {
       this.recordMetric('agent.status.change', 1, { 
-        agentId: data.agentId, 
-        from: data.from, 
-        to: data.to 
+        agentId: (data as any).agentId, 
+        from: (data as any).from, 
+        to: (data as any).to 
       });
     });
 
     // Task events
     this.eventBus.on('task:started', (data) => {
-      this.recordMetric('task.started', 1, { taskId: data.taskId, agentId: data.agentId });
+      this.recordMetric('task.started', 1, { taskId: (data as any).taskId, agentId: (data as any).agentId });
     });
 
     this.eventBus.on('task:completed', (data) => {
-      this.recordMetric('task.completed', 1, { taskId: data.taskId });
-      this.recordMetric('task.duration', data.duration, { taskId: data.taskId });
+      this.recordMetric('task.completed', 1, { taskId: (data as any).taskId });
+      this.recordMetric('task.duration', (data as any).duration, { taskId: (data as any).taskId });
     });
 
     this.eventBus.on('task:failed', (data) => {
-      this.recordMetric('task.failed', 1, { taskId: data.taskId, error: data.error });
+      this.recordMetric('task.failed', 1, { taskId: (data as any).taskId, error: (data as any).error });
     });
 
     // System events
     this.eventBus.on('system:resource-update', (data) => {
-      this.updateSystemMetrics(data);
+      this.updateSystemMetrics(data as any);
     });
 
     this.eventBus.on('swarm:metrics-update', (data) => {
-      this.updateSwarmMetrics(data.metrics);
+      this.updateSwarmMetrics((data as any).metrics);
     });
 
     // Error events
@@ -586,7 +586,7 @@ export class RealTimeMonitor extends EventEmitter {
       this.recordMetric(`healthcheck.${check.name}`, 0, {
         type: check.type,
         target: check.target,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }

@@ -209,7 +209,7 @@ export class ProjectManager extends EventEmitter {
   ) {
     super();
     this.projectsPath = projectsPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'ProjectManager' });
     this.config = config || ConfigManager.getInstance();
   }
 

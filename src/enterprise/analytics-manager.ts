@@ -59,7 +59,7 @@ export interface DashboardWidget {
     groupBy: string[];
   };
   visualization: {
-    chartType?: 'line' | 'bar' | 'pie' | 'scatter' | 'heatmap' | 'area';
+    chartType?: 'line' | 'bar' | 'pie' | 'scatter' | 'heatmap' | 'area' | 'gauge';
     options: Record<string, any>;
     thresholds?: {
       warning: number;
@@ -102,7 +102,7 @@ export interface AnalyticsInsight {
   title: string;
   description: string;
   type: 'anomaly' | 'trend' | 'correlation' | 'prediction' | 'recommendation';
-  category: 'performance' | 'usage' | 'cost' | 'security' | 'quality';
+  category: 'performance' | 'usage' | 'cost' | 'security' | 'quality' | 'business' | 'technical';
   confidence: number; // 0-100
   impact: 'low' | 'medium' | 'high';
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -414,7 +414,7 @@ export class AnalyticsManager extends EventEmitter {
   ) {
     super();
     this.analyticsPath = analyticsPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'AnalyticsManager' });
     this.config = config || ConfigManager.getInstance();
     this.configuration = this.getDefaultConfiguration();
   }
@@ -1073,6 +1073,7 @@ export class AnalyticsManager extends EventEmitter {
               groupBy: []
             },
             visualization: {
+              chartType: 'line' as const,
               options: { unit: 'users' }
             },
             alerts: { enabled: false, conditions: [] }

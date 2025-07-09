@@ -6,7 +6,26 @@
 
 // Import and run the simple CLI which doesn't have external dependencies
 import "./simple-cli.ts";
-// Spinner import removed - not available in current cliffy version
+// Import required dependencies
+import { Command } from "@cliffy/command";
+// Use stub for colors - will be replaced with actual @cliffy implementation
+const colors = {
+  red: (text: string) => text,
+  green: (text: string) => text,
+  blue: (text: string) => text,
+  yellow: (text: string) => text,
+  cyan: (text: string) => text,
+  magenta: (text: string) => text,
+  bold: (text: string) => text,
+  dim: (text: string) => text,
+  gray: (text: string) => text,
+  white: (text: string) => text,
+  black: (text: string) => text,
+  reset: '\x1b[0m',
+  setColorEnabled: (enabled: boolean) => {
+    // Stub implementation for color enabling/disabling
+  }
+};
 import { logger } from '../core/logger.js';
 import { configManager } from '../core/config.js';
 import { startCommand } from './commands/start.js';
@@ -23,6 +42,7 @@ import { mcpCommand } from './commands/mcp.js';
 import { formatError, displayBanner, displayVersion } from './formatter.js';
 import { startREPL } from './repl.js';
 import { CompletionGenerator } from './completion.js';
+import { env, processInfo, signals, args } from '../utils/runtime.js';
 
 // Version information
 const VERSION = '1.0.71';
@@ -33,8 +53,7 @@ const cli = new Command()
   .name('claude-flow')
   .version(VERSION)
   .description('Claude-Flow: Advanced AI agent orchestration system for multi-agent coordination')
-  .meta('Build', BUILD_DATE)
-  .meta('Runtime', 'Deno')
+  .meta({ Build: BUILD_DATE, Runtime: 'Deno' })
   .globalOption('-c, --config <path:string>', 'Path to configuration file', {
     default: './claude-flow.config.json',
   })
@@ -70,7 +89,7 @@ cli
   .command('session', sessionCommand)
   .command('workflow', workflowCommand)
   .command('mcp', mcpCommand)
-  .command('help', helpCommand)
+  .command('help', helpCommand as any)
   .command('repl', new Command()
     .description('Start interactive REPL mode with command completion')
     .option('--no-banner', 'Skip welcome banner')
@@ -119,7 +138,7 @@ async function handleError(error: unknown, options?: any): Promise<void> {
   }
   
   // Show stack trace in debug mode or verbose
-  if (Deno.env.get('CLAUDE_FLOW_DEBUG') === 'true' || options?.verbose) {
+  if (env.get('CLAUDE_FLOW_DEBUG') === 'true' || options?.verbose) {
     console.error(colors.gray('\nStack trace:'));
     console.error(error);
   }
@@ -130,7 +149,7 @@ async function handleError(error: unknown, options?: any): Promise<void> {
     console.error(colors.gray('Or use "claude-flow help" to see available commands'));
   }
   
-  Deno.exit(1);
+  processInfo.exit(1);
 }
 
 // Setup logging and configuration based on CLI options
@@ -175,15 +194,16 @@ async function setupLogging(options: any): Promise<void> {
 function setupSignalHandlers(): void {
   const gracefulShutdown = () => {
     console.log('\n' + colors.gray('Gracefully shutting down...'));
-    Deno.exit(0);
+    processInfo.exit(0);
   };
   
-  Deno.addSignalListener('SIGINT', gracefulShutdown);
-  Deno.addSignalListener('SIGTERM', gracefulShutdown);
+  signals.addListener('SIGINT', gracefulShutdown);
+  signals.addListener('SIGTERM', gracefulShutdown);
 }
 
 // Main entry point
-if (import.meta.main) {
+// Check if this file is being run directly
+if (process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'))) {
   let globalOptions: any = {};
   
   try {
@@ -191,12 +211,12 @@ if (import.meta.main) {
     setupSignalHandlers();
     
     // Pre-parse global options for error handling
-    const args = Deno.args;
+    const argv = args.get();
     globalOptions = {
-      verbose: args.includes('-v') || args.includes('--verbose'),
-      quiet: args.includes('-q') || args.includes('--quiet'),
-      json: args.includes('--json'),
-      noColor: args.includes('--no-color'),
+      verbose: argv.includes('-v') || argv.includes('--verbose'),
+      quiet: argv.includes('-q') || argv.includes('--quiet'),
+      json: argv.includes('--json'),
+      noColor: argv.includes('--no-color'),
     };
     
     // Configure colors based on options
@@ -204,7 +224,7 @@ if (import.meta.main) {
       colors.setColorEnabled(false);
     }
     
-    await cli.parse(args);
+    await cli.parse(args.get());
   } catch (error) {
     await handleError(error, globalOptions);
   }

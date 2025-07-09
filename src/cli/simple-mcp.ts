@@ -41,7 +41,7 @@ async function checkMCPStatus(host: string, port: number): Promise<boolean> {
   });
 }
 
-export function createMCPCommand() {
+export function createMCPCommand(): any {
   const mcpCmd = new Command('mcp')
     .description('Manage MCP server and tools')
     .action(() => {

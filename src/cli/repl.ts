@@ -3,11 +3,12 @@
  */
 
 import { Input, Confirm, Select } from '@cliffy/prompt';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../utils/colors.js';
 import { Table } from '@cliffy/table';
 import { AgentProfile, Task } from '../utils/types.js';
 import { generateId } from '../utils/helpers.js';
 import { formatStatusIndicator, formatDuration, formatProgressBar } from './formatter.js';
+import { fs, env, processInfo } from '../utils/runtime.js';
 
 interface REPLCommand {
   name: string;
@@ -57,8 +58,8 @@ class CommandHistory {
 
   private async loadHistory(): Promise<void> {
     try {
-      const content = await Deno.readTextFile(this.historyFile);
-      this.history = content.split('\n').filter(line => line.trim());
+      const content = await fs.readTextFile(this.historyFile);
+      this.history = content.split('\n').filter((line: string) => line.trim());
     } catch {
       // History file doesn't exist yet
     }
@@ -66,7 +67,7 @@ class CommandHistory {
 
   private async saveHistory(): Promise<void> {
     try {
-      await Deno.writeTextFile(this.historyFile, this.history.join('\n'));
+      await fs.writeTextFile(this.historyFile, this.history.join('\n'));
     } catch {
       // Ignore save errors
     }
@@ -163,7 +164,7 @@ export async function startREPL(options: any = {}): Promise<void> {
   const context: REPLContext = {
     options,
     history: [],
-    workingDirectory: Deno.cwd(),
+    workingDirectory: processInfo.cwd(),
     connectionStatus: 'disconnected',
     lastActivity: new Date(),
   };
@@ -329,9 +330,9 @@ export async function startREPL(options: any = {}): Promise<void> {
         }
         
         try {
-          const newDir = args[0] === '~' ? Deno.env.get('HOME') || '/' : args[0];
-          Deno.chdir(newDir);
-          ctx.workingDirectory = Deno.cwd();
+          const newDir = args[0] === '~' ? env.get('HOME') || '/' : args[0];
+          processInfo.chdir(newDir);
+          ctx.workingDirectory = processInfo.cwd();
           console.log(colors.gray(`Changed to: ${ctx.workingDirectory}`));
         } catch (error) {
           console.error(colors.red('Error:'), error instanceof Error ? error.message : String(error));
@@ -360,7 +361,7 @@ export async function startREPL(options: any = {}): Promise<void> {
       description: 'Exit the REPL',
       handler: async () => {
         console.log(colors.gray('Goodbye!'));
-        Deno.exit(0);
+        processInfo.exit(0);
       },
     },
   ];
@@ -1014,7 +1015,7 @@ async function showWorkflowList(): Promise<void> {
 
 async function handleWorkflowRun(filename: string): Promise<void> {
   try {
-    await Deno.stat(filename);
+    await fs.stat(filename);
     console.log(colors.yellow(`Running workflow: ${filename}`));
     await new Promise(resolve => setTimeout(resolve, 1000));
     

@@ -3,7 +3,7 @@
  */
 
 import { Command } from '@cliffy/command';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
 import { Table } from '@cliffy/table';
 import { Confirm, Input } from '@cliffy/prompt';
 import { formatDuration, formatStatusIndicator, formatProgressBar } from '../formatter.js';
@@ -169,7 +169,8 @@ async function runWorkflow(workflowFile: string, options: any): Promise<void> {
     }
   } catch (error) {
     console.error(colors.red('Workflow execution failed:'), (error as Error).message);
-    Deno.exit(1);
+    const { processInfo } = await import('../../utils/runtime.js');
+    processInfo.exit(1);
   }
 }
 
@@ -189,7 +190,8 @@ async function validateWorkflow(workflowFile: string, options: any): Promise<voi
     }
   } catch (error) {
     console.error(colors.red('✗ Workflow validation failed:'), (error as Error).message);
-    Deno.exit(1);
+    const { processInfo } = await import('../../utils/runtime.js');
+    processInfo.exit(1);
   }
 }
 
@@ -414,7 +416,8 @@ async function generateTemplate(templateType: string, options: any): Promise<voi
     content = JSON.stringify(template, null, 2);
   }
 
-  await Deno.writeTextFile(outputFile, content);
+  const { fs } = await import('../../utils/runtime.js');
+  await fs.writeTextFile(outputFile, content);
 
   console.log(colors.green('✓ Workflow template generated'));
   console.log(`${colors.white('Template:')} ${templateType}`);
@@ -425,7 +428,8 @@ async function generateTemplate(templateType: string, options: any): Promise<voi
 
 async function loadWorkflow(workflowFile: string): Promise<WorkflowDefinition> {
   try {
-    const content = await Deno.readTextFile(workflowFile);
+    const { fs } = await import('../../utils/runtime.js');
+    const content = await fs.readTextFile(workflowFile);
     
     if (workflowFile.endsWith('.yaml') || workflowFile.endsWith('.yml')) {
       // In production, use a proper YAML parser

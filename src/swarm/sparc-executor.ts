@@ -26,7 +26,7 @@ export class SparcTaskExecutor {
   private enableTDD: boolean;
   private qualityThreshold: number;
   private enableMemory: boolean;
-  private phases: Map<string, SparcPhase>;
+  private phases!: Map<string, SparcPhase>;
 
   constructor(config: SparcExecutorConfig = {}) {
     this.logger = config.logger || new Logger(
@@ -122,7 +122,7 @@ export class SparcTaskExecutor {
     } catch (error) {
       this.logger.error('SPARC task execution failed', {
         taskId: task.id.id,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
@@ -146,7 +146,7 @@ export class SparcTaskExecutor {
       case 'researcher':
         return this.executePseudocodePhase(task, targetDir);
       
-      case 'architect':
+      case 'specialist':
       case 'coordinator':
         if (task.name.includes('Architecture') || objective.includes('design')) {
           return this.executeArchitecturePhase(task, targetDir);
@@ -458,7 +458,7 @@ export class SparcTaskExecutor {
       ]
     };
     
-    return stories[appType] || [
+    return (stories as any)[appType] || [
       { id: 'US001', story: 'As a user, I want to use the main functionality', priority: 'high' }
     ];
   }
@@ -477,7 +477,7 @@ export class SparcTaskExecutor {
       }
     };
     
-    return criteria[appType] || {
+    return (criteria as any)[appType] || {
       functionality: ['Core features work as expected'],
       quality: ['Code follows best practices']
     };
@@ -562,7 +562,7 @@ export class SparcTaskExecutor {
       typescript: 'jest',
       java: 'junit'
     };
-    return frameworks[language] || 'generic';
+    return (frameworks as any)[language] || 'generic';
   }
 
   private getProjectStructure(appType: string, language: string): any {
@@ -577,7 +577,7 @@ export class SparcTaskExecutor {
       }
     };
     
-    return structures[`${language}-${appType}`] || {
+    return (structures as any)[`${language}-${appType}`] || {
       directories: ['src', 'tests', 'docs'],
       files: ['README.md', '.gitignore']
     };
@@ -603,7 +603,7 @@ export class SparcTaskExecutor {
       typescript: 'ts',
       java: 'java'
     };
-    return `${name}.${extensions[language] || 'js'}`;
+    return `${name}.${(extensions as any)[language] || 'js'}`;
   }
 
   // Content generation methods
@@ -633,7 +633,7 @@ export class SparcTaskExecutor {
       ]
     };
     
-    return requirements[appType] || ['Implement core functionality'];
+    return (requirements as any)[appType] || ['Implement core functionality'];
   }
 
   private getNonFunctionalRequirements(appType: string): string[] {
@@ -664,7 +664,7 @@ export class SparcTaskExecutor {
       ]
     };
     
-    return tech[appType] || ['Follow best practices for the technology stack'];
+    return (tech as any)[appType] || ['Follow best practices for the technology stack'];
   }
 
   private getBusinessRequirements(appType: string): string[] {

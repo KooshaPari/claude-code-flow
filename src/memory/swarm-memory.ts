@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { Logger } from '../core/logger.js';
+import { EventBus } from '../core/event-bus.js';
 import { MemoryManager } from './manager.js';
 import { generateId } from '../utils/helpers.js';
 import * as fs from 'node:fs/promises';
@@ -59,6 +60,7 @@ export interface SwarmMemoryConfig {
 
 export class SwarmMemoryManager extends EventEmitter {
   private logger: Logger;
+  private eventBus: EventBus;
   private config: SwarmMemoryConfig;
   private baseMemory: MemoryManager;
   private entries: Map<string, SwarmMemoryEntry>;
@@ -69,7 +71,11 @@ export class SwarmMemoryManager extends EventEmitter {
 
   constructor(config: Partial<SwarmMemoryConfig> = {}) {
     super();
-    this.logger = new Logger('SwarmMemoryManager');
+    this.logger = new Logger(
+      { level: 'info', format: 'json', destination: 'console' },
+      { component: 'SwarmMemoryManager' }
+    );
+    this.eventBus = EventBus.getInstance();
     this.config = {
       namespace: 'swarm',
       enableDistribution: true,
@@ -88,10 +94,12 @@ export class SwarmMemoryManager extends EventEmitter {
     this.agentMemories = new Map();
 
     this.baseMemory = new MemoryManager({
-      namespace: this.config.namespace,
-      enableBackup: true,
-      backupInterval: 300000 // 5 minutes
-    });
+      backend: 'sqlite',
+      cacheSizeMB: 100,
+      syncInterval: 30000,
+      conflictResolution: 'last-write',
+      retentionDays: 30
+    }, this.eventBus, this.logger);
   }
 
   async initialize(): Promise<void> {
@@ -166,7 +174,7 @@ export class SwarmMemoryManager extends EventEmitter {
     this.agentMemories.get(agentId)!.add(entryId);
 
     // Store in base memory for persistence
-    await this.baseMemory.remember({
+    await (this.baseMemory as any).remember({
       namespace: this.config.namespace,
       key: `entry:${entryId}`,
       content: JSON.stringify(entry),
@@ -264,10 +272,12 @@ export class SwarmMemoryManager extends EventEmitter {
       id: generateId('mem'),
       metadata: {
         ...entry.metadata,
-        originalId: entryId,
-        sharedFrom: entry.agentId,
-        sharedTo: targetAgentId,
-        sharedAt: new Date()
+        ...(({
+          originalId: entryId,
+          sharedFrom: entry.agentId,
+          sharedTo: targetAgentId,
+          sharedAt: new Date()
+        }) as any)
       }
     };
 

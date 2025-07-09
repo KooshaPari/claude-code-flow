@@ -7,6 +7,7 @@ import { AgentProfile } from '../utils/types.js';
 import { ILogger } from '../core/logger.js';
 import { TerminalCommandError } from '../utils/errors.js';
 import { generateId, timeout } from '../utils/helpers.js';
+import { env } from '../utils/runtime.js';
 
 /**
  * Terminal session wrapper

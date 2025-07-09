@@ -2,7 +2,7 @@
  * Output formatting utilities for CLI
  */
 
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../utils/colors.js';
 import { Table } from '@cliffy/table';
 // Box is not available in the current cliffy version
 import { AgentProfile, Task, MemoryEntry, HealthStatus } from '../utils/types.js';
@@ -243,9 +243,9 @@ export function displayVersion(version: string, buildDate: string): void {
     '',
     colors.white('Version:    ') + colors.yellow(version),
     colors.white('Build Date: ') + colors.yellow(buildDate),
-    colors.white('Runtime:    ') + colors.yellow('Deno ' + Deno.version.deno),
-    colors.white('TypeScript: ') + colors.yellow(Deno.version.typescript),
-    colors.white('V8:         ') + colors.yellow(Deno.version.v8),
+    colors.white('Runtime:    ') + colors.yellow('Node.js ' + process.version),
+    colors.white('Platform:   ') + colors.yellow(process.platform + ' ' + process.arch),
+    colors.white('V8:         ') + colors.yellow(process.versions.v8),
     '',
     colors.gray('Components:'),
     colors.white('  • Multi-Agent Orchestration'),
@@ -254,7 +254,7 @@ export function displayVersion(version: string, buildDate: string): void {
     colors.white('  • MCP Server'),
     colors.white('  • Task Coordination'),
     '',
-    colors.blue('Homepage: ') + colors.underline('https://github.com/anthropics/claude-code-flow'),
+    colors.blue('Homepage: ') + colors.blue('https://github.com/anthropics/claude-code-flow'),
   ];
   
   console.log(info.join('\n'));

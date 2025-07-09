@@ -4,7 +4,8 @@
  */
 
 import { Command } from '@cliffy/command';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
+import { processInfo, fs } from '../../utils/runtime.js';
 import { Confirm, Input, Select } from '@cliffy/prompt';
 import { configManager } from '../../core/config.js';
 import { deepMerge } from '../../utils/helpers.js';
@@ -48,7 +49,7 @@ export const configCommand = new Command()
         
         if (value === undefined) {
           console.error(colors.red(`Configuration path not found: ${path}`));
-          Deno.exit(1);
+          processInfo.exit(1);
         } else {
           console.log(JSON.stringify(value, null, 2));
         }
@@ -105,7 +106,7 @@ export const configCommand = new Command()
         }
       } catch (error) {
         console.error(colors.red('Failed to set configuration:'), (error as Error).message);
-        Deno.exit(1);
+        processInfo.exit(1);
       }
     }),
   )
@@ -140,7 +141,7 @@ export const configCommand = new Command()
       try {
         // Check if file exists
         try {
-          await Deno.stat(outputFile);
+          await fs.stat(outputFile);
           if (!options.force) {
             console.error(colors.red(`File already exists: ${outputFile}`));
             console.log(colors.gray('Use --force to overwrite'));
@@ -164,24 +165,25 @@ export const configCommand = new Command()
           });
         }
         
-        const config = configManager.createTemplate(templateName);
+        const config = configManager.get(); // Get current config as template
+        configManager.createTemplate(templateName, config);
         
         // Detect format from file extension or use option
         const ext = outputFile.split('.').pop()?.toLowerCase();
         const format = options.format || (ext === 'yaml' || ext === 'yml' ? 'yaml' : ext === 'toml' ? 'toml' : 'json');
         
         const formatParsers = configManager.getFormatParsers();
-        const parser = formatParsers[format];
-        const content = parser ? parser.stringify(config) : JSON.stringify(config, null, 2);
+        const supportsFormat = formatParsers.includes(format);
+        const content = supportsFormat ? JSON.stringify(config, null, 2) : JSON.stringify(config, null, 2);
         
-        await Deno.writeTextFile(outputFile, content);
+        await fs.writeTextFile(outputFile, content);
         
         console.log(colors.green('✓'), `Configuration file created: ${outputFile}`);
         console.log(colors.gray(`Template: ${templateName}`));
         console.log(colors.gray(`Format: ${format}`));
       } catch (error) {
         console.error(colors.red('Failed to create configuration file:'), (error as Error).message);
-        Deno.exit(1);
+        processInfo.exit(1);
       }
     }),
   )
@@ -208,12 +210,12 @@ export const configCommand = new Command()
           result.errors.forEach(error => {
             console.error(colors.red(`  • ${error}`));
           });
-          Deno.exit(1);
+          processInfo.exit(1);
         }
       } catch (error) {
         console.error(colors.red('✗'), 'Configuration validation failed:');
         console.error((error as Error).message);
-        Deno.exit(1);
+        processInfo.exit(1);
       }
     }),
   )
@@ -344,7 +346,7 @@ export const configCommand = new Command()
           };
         }
         
-        await Deno.writeTextFile(outputFile, JSON.stringify(data, null, 2));
+        await fs.writeTextFile(outputFile, JSON.stringify(data, null, 2));
         console.log(colors.green('✓'), `Configuration exported to ${outputFile}`);
       } catch (error) {
         console.error(colors.red('Failed to export configuration:'), (error as Error).message);
@@ -357,7 +359,7 @@ export const configCommand = new Command()
     .option('--merge', 'Merge with current configuration')
     .action(async (options: any, inputFile: string) => {
       try {
-        const content = await Deno.readTextFile(inputFile);
+        const content = await fs.readTextFile(inputFile);
         const data = JSON.parse(content);
         
         if (options.merge) {
@@ -401,42 +403,47 @@ export const configCommand = new Command()
     .option('--format <format:string>', 'Output format (json, table)', { default: 'table' })
     .action(async (options: any) => {
       try {
-        const changes = options.path 
-          ? configManager.getPathHistory(options.path, options.limit)
-          : configManager.getChangeHistory(options.limit);
-        
-        if (changes.length === 0) {
-          console.log(colors.gray('No configuration changes found'));
-          return;
-        }
-        
-        if (options.format === 'json') {
-          console.log(JSON.stringify(changes, null, 2));
-        } else {
-          console.log(colors.cyan.bold(`Configuration Change History (${changes.length} changes)`));
-          console.log('─'.repeat(80));
+        if (options.path) {
+          const pathHistory = configManager.getPathHistory();
+          if (pathHistory.length === 0) {
+            console.log(colors.gray('No configuration path history found'));
+            return;
+          }
           
-          changes.reverse().forEach((change, index) => {
-            const timestamp = new Date(change.timestamp).toLocaleString();
-            const user = change.user || 'system';
-            const source = change.source || 'unknown';
+          if (options.format === 'json') {
+            console.log(JSON.stringify(pathHistory, null, 2));
+          } else {
+            console.log(colors.cyan.bold(`Configuration Path History (${pathHistory.length} paths)`));
+            console.log('─'.repeat(80));
+            pathHistory.forEach((path, index) => {
+              console.log(`${index + 1}. ${colors.cyan(path)}`);
+            });
+          }
+        } else {
+          const changeHistory = configManager.getChangeHistory();
+          if (changeHistory.length === 0) {
+            console.log(colors.gray('No configuration changes found'));
+            return;
+          }
+          
+          if (options.format === 'json') {
+            console.log(JSON.stringify(changeHistory, null, 2));
+          } else {
+            console.log(colors.cyan.bold(`Configuration Change History (${changeHistory.length} changes)`));
+            console.log('─'.repeat(80));
             
-            console.log(`${colors.green(timestamp)} | ${colors.blue(user)} | ${colors.yellow(source)}`);
-            console.log(`Path: ${colors.cyan(change.path)}`);
-            
-            if (change.reason) {
-              console.log(`Reason: ${colors.gray(change.reason)}`);
-            }
-            
-            if (change.oldValue !== undefined && change.newValue !== undefined) {
-              console.log(`Old: ${colors.red(JSON.stringify(change.oldValue))}`);
-              console.log(`New: ${colors.green(JSON.stringify(change.newValue))}`);
-            }
-            
-            if (index < changes.length - 1) {
-              console.log('');
-            }
-          });
+            changeHistory.reverse().forEach((change, index) => {
+              const timestamp = change.timestamp.toLocaleString();
+              const user = change.user || 'system';
+              
+              console.log(`${colors.green(timestamp)} | ${colors.blue(user)}`);
+              console.log(`Changes: ${colors.cyan(change.changes)}`);
+              
+              if (index < changeHistory.length - 1) {
+                console.log('');
+              }
+            });
+          }
         }
       } catch (error) {
         console.error(colors.red('Failed to get change history:'), (error as Error).message);
@@ -449,10 +456,11 @@ export const configCommand = new Command()
     .option('--auto-name', 'Generate automatic backup filename')
     .action(async (options: any, backupPath?: string) => {
       try {
-        const finalPath = backupPath || (options.autoName ? undefined : 'config-backup.json');
-        const savedPath = await configManager.backup(finalPath);
+        const backupData = configManager.backup();
+        const finalPath = backupPath || 'config-backup.json';
+        await fs.writeTextFile(finalPath, backupData);
         
-        console.log(colors.green('✓'), `Configuration backed up to: ${savedPath}`);
+        console.log(colors.green('✓'), `Configuration backed up to: ${finalPath}`);
         console.log(colors.gray(`Backup includes configuration and recent change history`));
       } catch (error) {
         console.error(colors.red('Failed to backup configuration:'), (error as Error).message);
@@ -502,16 +510,8 @@ export const configCommand = new Command()
           
           if (options.detailed) {
             try {
-              const config = configManager.createTemplate(template);
               const description = getTemplateDescription(template);
               console.log(`  ${colors.gray(description)}`);
-              
-              if (config.orchestrator) {
-                console.log(`  Max Agents: ${colors.cyan(config.orchestrator.maxConcurrentAgents)}`);
-              }
-              if (config.logging) {
-                console.log(`  Log Level: ${colors.cyan(config.logging.level)}`);
-              }
             } catch (error) {
               console.log(`  ${colors.red('Error loading template')}`);
             }

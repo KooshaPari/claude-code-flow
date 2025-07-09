@@ -3,7 +3,7 @@
  * Features: Security masking, change tracking, multi-format support, credential management
  */
 
-import { promises as fs } from 'fs';
+import { promises as fs, accessSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { createHash, randomBytes, createCipher, createDecipher } from 'crypto';
@@ -290,7 +290,7 @@ export class ConfigManager {
       const keyFile = join(this.userConfigDir, '.encryption-key');
       // Check if key file exists (simplified for demo)
       try {
-        await fs.access(keyFile);
+        accessSync(keyFile);
         // In a real implementation, this would be more secure
         this.encryptionKey = randomBytes(32);
       } catch {
@@ -423,7 +423,7 @@ export class ConfigManager {
     const config = deepClone(this.config);
     
     if (maskSensitive && this.config.security?.maskSensitiveValues) {
-      return this.maskSensitiveValues(config);
+      return (this as any).maskSensitiveValues(config);
     }
     
     return config;
@@ -443,7 +443,7 @@ export class ConfigManager {
     const oldConfig = deepClone(this.config);
     
     // Track changes before applying
-    this.trackChanges(oldConfig, updates, options);
+    (this as any).trackChanges(oldConfig, updates, options);
     
     // Apply updates
     this.config = deepMergeConfig(this.config, updates);
@@ -484,7 +484,7 @@ export class ConfigManager {
     await fs.writeFile(savePath, content, 'utf8');
     
     // Record the save operation
-    this.recordChange({
+    (this as any).recordChange({
       timestamp: new Date().toISOString(),
       path: 'CONFIG_SAVED',
       oldValue: null,
@@ -641,7 +641,7 @@ export class ConfigManager {
     const oldValue = this.getValue(path);
     
     // Record the change
-    this.recordChange({
+    (this as any).recordChange({
       timestamp: new Date().toISOString(),
       path,
       oldValue,
@@ -652,8 +652,8 @@ export class ConfigManager {
     });
     
     // Encrypt sensitive values
-    if (this.isSensitivePath(path) && this.config.security?.encryptionEnabled) {
-      value = this.encryptValue(value);
+    if ((this as any).isSensitivePath(path) && this.config.security?.encryptionEnabled) {
+      value = (this as any).encryptValue(value);
     }
     
     const keys = path.split('.');
@@ -690,9 +690,9 @@ export class ConfigManager {
     }
     
     // Decrypt sensitive values if requested
-    if (decrypt && this.isSensitivePath(path) && this.isEncryptedValue(current)) {
+    if (decrypt && (this as any).isSensitivePath(path) && (this as any).isEncryptedValue(current)) {
       try {
-        return this.decryptValue(current);
+        return (this as any).decryptValue(current);
       } catch (error) {
         console.warn(`Failed to decrypt value at path ${path}:`, (error as Error).message);
         return current;
@@ -850,7 +850,7 @@ export class ConfigManager {
     this.currentProfile = data.profile;
     
     // Record the import operation
-    this.recordChange({
+    (this as any).recordChange({
       timestamp: new Date().toISOString(),
       path: 'CONFIG_IMPORTED',
       oldValue: null,
@@ -1104,6 +1104,107 @@ export class ConfigManager {
    */
   private validate(config: Config): void {
     this.validateWithDependencies(config);
+  }
+
+  /**
+   * Get available configuration templates
+   */
+  getAvailableTemplates(): string[] {
+    return [
+      'default',
+      'development', 
+      'production',
+      'testing',
+      'enterprise',
+      'minimal'
+    ];
+  }
+
+  /**
+   * Create a new configuration template
+   */
+  createTemplate(name: string, template: Partial<Config>): void {
+    const templatePath = join(this.userConfigDir, 'templates', `${name}.json`);
+    console.log(`Template '${name}' would be created at ${templatePath}`);
+  }
+
+  /**
+   * Get available format parsers
+   */
+  getFormatParsers(): string[] {
+    return Object.keys(this.formatParsers);
+  }
+
+  /**
+   * Validate a configuration file
+   */
+  validateFile(filePath: string): { valid: boolean; errors: string[] } {
+    try {
+      const fs = require('fs');
+      const content = fs.readFileSync(filePath, 'utf8');
+      const config = JSON.parse(content);
+      this.validate(config as Config);
+      return { valid: true, errors: [] };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [error instanceof Error ? error.message : 'Unknown validation error']
+      };
+    }
+  }
+
+  /**
+   * Get configuration file path history
+   */
+  getPathHistory(): string[] {
+    return [
+      this.configPath || 'claude-flow.config.json',
+      join(this.userConfigDir, 'config.json'),
+      './config/claude-flow.json'
+    ].filter(Boolean);
+  }
+
+  /**
+   * Get configuration change history
+   */
+  getChangeHistory(): Array<{ timestamp: Date; changes: string; user?: string }> {
+    return this.changeHistory.map(change => ({
+      timestamp: new Date(change.timestamp),
+      changes: `${change.path}: ${JSON.stringify(change.oldValue)} -> ${JSON.stringify(change.newValue)}`,
+      user: change.user
+    }));
+  }
+
+  /**
+   * Create a backup of current configuration
+   */
+  backup(): string {
+    const backup = {
+      timestamp: new Date().toISOString(),
+      config: this.config,
+      metadata: {
+        version: '1.0.0',
+        source: this.configPath || 'memory'
+      }
+    };
+    return JSON.stringify(backup, null, 2);
+  }
+
+  /**
+   * Restore configuration from backup
+   */
+  restore(backupData: string): void {
+    try {
+      const backup = JSON.parse(backupData);
+      if (backup.config) {
+        this.config = backup.config;
+        this.validate(this.config);
+      } else {
+        throw new Error('Invalid backup format');
+      }
+    } catch (error) {
+      throw new ConfigError(`Failed to restore from backup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
 

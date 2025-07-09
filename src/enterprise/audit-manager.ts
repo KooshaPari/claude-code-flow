@@ -381,7 +381,7 @@ export class AuditManager extends EventEmitter {
   ) {
     super();
     this.auditPath = auditPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'AuditManager' });
     this.config = config || ConfigManager.getInstance();
     this.configuration = this.getDefaultConfiguration();
   }
@@ -495,10 +495,10 @@ export class AuditManager extends EventEmitter {
         id: `req-${Date.now()}-${index}`,
         ...req,
         automatedCheck: {
-          enabled: false,
-          frequency: 'daily',
-          query: '',
-          ...req.automatedCheck
+          ...req.automatedCheck,
+          enabled: req.automatedCheck?.enabled ?? false,
+          frequency: req.automatedCheck?.frequency ?? 'daily' as const,
+          query: req.automatedCheck?.query ?? ''
         }
       })),
       auditFrequency: frameworkData.auditFrequency,

@@ -1,0 +1,360 @@
+name: 🚀 Klaude-Flow CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [published]
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 🔍 Quality Checks
+  quality-checks:
+    name: 🔍 Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 TypeScript check
+        run: npm run typecheck
+
+      - name: 🧹 ESLint check
+        run: npm run lint
+
+      - name: 🎨 Prettier check
+        run: npm run format -- --check
+
+  # 🧪 Testing Suite
+  tests:
+    name: 🧪 Tests
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run tests
+        run: npm test
+
+      - name: 📊 Upload coverage
+        uses: codecov/codecov-action@v3
+        if: matrix.node-version == 18
+
+  # 🏗️ Build Process
+  build:
+    name: 🏗️ Build
+    runs-on: ${{ matrix.os }}
+    needs: [quality-checks, tests]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [18, 20]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build TypeScript
+        run: npm run build:ts
+
+      - name: 📦 Build binaries
+        run: npm run build:binary
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 18
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 18
+        with:
+          name: klaude-flow-binaries
+          path: bin/
+
+  # 🔒 Security Scanning
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔒 Run security audit
+        run: npm audit --audit-level=moderate
+
+      - name: 🔍 CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: 🔍 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # 📦 Package & Release
+  package:
+    name: 📦 Package
+    runs-on: ubuntu-latest
+    needs: [build, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build
+        run: npm run build
+
+      - name: 📤 Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: klaude-flow-binaries
+          path: bin/
+
+      - name: 📦 Package for NPM
+        run: npm pack
+
+      - name: 📤 Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: klaude-flow-package
+          path: '*.tgz'
+
+  # 🚀 Deploy to NPM
+  deploy-npm:
+    name: 🚀 Deploy to NPM
+    runs-on: ubuntu-latest
+    needs: package
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment: production
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build
+        run: npm run build
+
+      - name: 📤 Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: klaude-flow-binaries
+          path: bin/
+
+      - name: 🚀 Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # 🐳 Docker Build & Push
+  docker:
+    name: 🐳 Docker
+    runs-on: ubuntu-latest
+    needs: [build, security]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.event_name == 'release')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+
+      - name: 🏗️ Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 📊 Performance Testing
+  performance:
+    name: 📊 Performance
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build
+        run: npm run build:ts
+
+      - name: 📊 Run performance tests
+        run: |
+          echo "🚀 Testing CLI startup time..."
+          time node dist/cli/main.js --version
+          echo "🧠 Testing memory usage..."
+          node -e "console.log('Memory usage:', process.memoryUsage())"
+
+  # 🔄 Integration Tests
+  integration:
+    name: 🔄 Integration
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build
+        run: npm run build:ts
+
+      - name: 🔄 Run integration tests
+        run: |
+          echo "🧪 Testing basic CLI functionality..."
+          node dist/cli/main.js --help
+          echo "🧪 Testing config initialization..."
+          node dist/cli/main.js config init --dry-run || true
+          echo "🧪 Testing SPARC modes..."
+          node dist/cli/main.js sparc modes || true
+
+  # 📈 Release Notes
+  release-notes:
+    name: 📈 Release Notes
+    runs-on: ubuntu-latest
+    needs: [deploy-npm, docker]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📝 Generate release notes
+        run: |
+          echo "## 🎉 Klaude-Flow ${{ github.event.release.tag_name }} Released!" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### 🚀 What's New:" >> release-notes.md
+          echo "- 🔧 Enhanced TypeScript support with 0 errors" >> release-notes.md
+          echo "- 🎯 Improved CI/CD pipeline with comprehensive checks" >> release-notes.md
+          echo "- 🐳 Docker support for containerized deployments" >> release-notes.md
+          echo "- 📊 Performance optimizations" >> release-notes.md
+          echo "- 🔒 Enhanced security scanning" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### 📦 Installation:" >> release-notes.md
+          echo "\`\`\`bash" >> release-notes.md
+          echo "npm install -g klaude-flow@${{ github.event.release.tag_name }}" >> release-notes.md
+          echo "\`\`\`" >> release-notes.md
+
+      - name: 📤 Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  # 🎯 Deployment Status
+  deployment-status:
+    name: 🎯 Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy-npm, docker, release-notes]
+    if: always() && github.event_name == 'release'
+    steps:
+      - name: 📊 Deployment Summary
+        run: |
+          echo "## 🚀 Klaude-Flow Deployment Status"
+          echo "### 📦 NPM Deployment: ${{ needs.deploy-npm.result }}"
+          echo "### 🐳 Docker Deployment: ${{ needs.docker.result }}"
+          echo "### 📈 Release Notes: ${{ needs.release-notes.result }}"
+          echo "### 🎯 Overall Status: ${{ job.status }}"

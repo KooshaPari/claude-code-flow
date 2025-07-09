@@ -197,7 +197,7 @@ export class InitializationError extends SystemError {
     const message = componentOrMessage.includes('initialize') 
       ? componentOrMessage 
       : `Failed to initialize ${componentOrMessage}`;
-    super(message, details ? { component: componentOrMessage, ...details } : { component: componentOrMessage });
+    super(message, details ? { component: componentOrMessage, ...(details as Record<string, any>) } : { component: componentOrMessage });
   }
 }
 

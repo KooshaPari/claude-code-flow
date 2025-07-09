@@ -3,8 +3,9 @@
  */
 
 // Note: Using basic command structure since @cliffy dependencies may not be available
+import { Command } from '@cliffy/command';
 import { Table } from '@cliffy/table';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
 import { Select, Input, Confirm, Number } from '@cliffy/prompt';
 import { AgentProfile } from '../../utils/types.js';
 import { generateId } from '../../utils/helpers.js';
@@ -24,12 +25,16 @@ let agentManager: AgentManager | null = null;
 async function initializeAgentManager(): Promise<AgentManager> {
   if (agentManager) return agentManager;
   
-  const logger = new Logger({ level: 'info' });
-  const eventBus = new EventBus();
-  const memorySystem = new DistributedMemorySystem({
-    backend: 'sqlite',
-    path: './memory/agents.db'
+  const logger = new Logger({
+    level: 'info',
+    format: 'text',
+    destination: 'console'
   });
+  const eventBus = EventBus.getInstance();
+  const memorySystem = new DistributedMemorySystem({
+    namespace: 'agents',
+    persistenceEnabled: true
+  }, logger, eventBus);
   
   await memorySystem.initialize();
   
@@ -70,16 +75,24 @@ export const agentCommand = new Command()
     console.log('  logs     - View agent logs and activity history');
     console.log('');
     console.log('Use --help with any command for detailed options.');
-    agentCommand.showHelp();
+    
+    // Show help information
+    console.log('\nDetailed command help:');
+    console.log('  spawn    - Create agents from templates with custom configuration');
+    console.log('  list     - View agents with filtering, sorting, and formatting options');
+    console.log('  info     - Get comprehensive agent details and diagnostics');
+    console.log('  terminate - Safely stop agents with state preservation options');
+    console.log('  pool     - Create and manage agent pools for scaling');
+    console.log('  health   - Monitor agent health and performance in real-time');
   })
-  .command('list', new Command()
+  .command('list')
     .description('Display all agents with comprehensive status and metrics')
-    .option('-t, --type <type:string>', 'Filter by agent type')
-    .option('-s, --status <status:string>', 'Filter by agent status')
+    .option('-t, --type <type>', 'Filter by agent type')
+    .option('-s, --status <status>', 'Filter by agent status')
     .option('--unhealthy', 'Show only unhealthy agents')
     .option('--json', 'Output in JSON format')
     .option('--detailed', 'Show detailed resource usage and metrics')
-    .option('--sort <field:string>', 'Sort by field (name, type, status, health, workload)', { default: 'name' })
+    .option('--sort <field>', 'Sort by field (name, type, status, health, workload)', 'name')
     .action(async (options) => {
       try {
         const manager = await initializeAgentManager();
@@ -135,26 +148,24 @@ export const agentCommand = new Command()
         console.log(`Average Health: ${formatPercentage(stats.averageHealth)} | Pools: ${stats.pools}`);
         
       } catch (error) {
-        console.error(colors.red('Error listing agents:'), error.message);
+        console.error(colors.red('Error listing agents:'), error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
-    }),
-  )
-  .command('spawn', new Command()
+    })
+  .command('spawn [template]')
     .description('Create and start new agents with advanced configuration options')
-    .arguments('[template:string]')
-    .option('-n, --name <name:string>', 'Agent name')
-    .option('-t, --type <type:string>', 'Agent type')
-    .option('--template <template:string>', 'Use predefined template')
-    .option('--pool <pool:string>', 'Add to specific pool')
-    .option('--autonomy <level:number>', 'Autonomy level (0-1)', { default: 0.7 })
-    .option('--max-tasks <max:number>', 'Maximum concurrent tasks', { default: 5 })
-    .option('--max-memory <mb:number>', 'Memory limit in MB', { default: 512 })
-    .option('--timeout <ms:number>', 'Task timeout in milliseconds', { default: 300000 })
+    .option('-n, --name <name>', 'Agent name')
+    .option('-t, --type <type>', 'Agent type')
+    .option('--template <template>', 'Use predefined template')
+    .option('--pool <pool>', 'Add to specific pool')
+    .option('--autonomy <level>', 'Autonomy level (0-1)', '0.7')
+    .option('--max-tasks <max>', 'Maximum concurrent tasks', '5')
+    .option('--max-memory <mb>', 'Memory limit in MB', '512')
+    .option('--timeout <ms>', 'Task timeout in milliseconds', '300000')
     .option('--interactive', 'Interactive configuration')
     .option('--start', 'Automatically start the agent after creation')
-    .option('--config <path:string>', 'Load configuration from JSON file')
-    .action(async (options, template?: string) => {
+    .option('--config <path>', 'Load configuration from JSON file')
+    .action(async (template, options) => {
       try {
         const manager = await initializeAgentManager();
         
@@ -192,12 +203,12 @@ export const agentCommand = new Command()
             template: selectedTemplate.name,
             name: options.name,
             config: {
-              autonomyLevel: options.autonomy,
-              maxConcurrentTasks: options.maxTasks,
-              timeoutThreshold: options.timeout
+              autonomyLevel: parseFloat(options.autonomy),
+              maxConcurrentTasks: parseInt(options.maxTasks),
+              timeoutThreshold: parseInt(options.timeout)
             },
             environment: {
-              maxMemoryUsage: options.maxMemory * 1024 * 1024
+              maxMemoryUsage: parseInt(options.maxMemory) * 1024 * 1024
             }
           };
         }
@@ -245,19 +256,17 @@ export const agentCommand = new Command()
         }
         
       } catch (error) {
-        console.error(colors.red('Error creating agent:'), error.message);
+        console.error(colors.red('Error creating agent:'), error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
-    }),
-  )
-  .command('terminate', new Command()
+    })
+  .command('terminate <agent-id>')
     .description('Safely terminate agents with cleanup and state preservation')
-    .arguments('<agent-id:string>')
     .option('--force', 'Force termination without graceful shutdown')
     .option('--preserve-state', 'Preserve agent state in memory for later revival')
     .option('--cleanup', 'Remove all agent data and logs')
-    .option('--reason <reason:string>', 'Termination reason for logging')
-    .action(async (options, agentId: string) => {
+    .option('--reason <reason>', 'Termination reason for logging')
+    .action(async (agentId: string, options) => {
       try {
         const manager = await initializeAgentManager();
         const agent = manager.getAgent(agentId);
@@ -268,7 +277,7 @@ export const agentCommand = new Command()
         }
         
         console.log(colors.cyan(`\n🛑 Terminating agent: ${agent.name} (${agentId})`));
-        console.log(`Current status: ${getStatusColor(agent.status)}${agent.status}${colors.reset}`);
+        console.log(`Current status: ${getStatusDisplay(agent.status)}`);
         
         // Confirm termination if agent is busy
         if (agent.status === 'busy' && agent.workload > 0) {
@@ -288,7 +297,7 @@ export const agentCommand = new Command()
         // Preserve state if requested
         if (options.preserveState) {
           console.log(colors.blue('📦 Preserving agent state...'));
-          await manager.memory.store(`agent_state:${agentId}`, {
+          await manager.getMemory().store(`agent_state:${agentId}`, {
             agent,
             terminationTime: new Date(),
             reason,
@@ -326,21 +335,19 @@ export const agentCommand = new Command()
         }
         
       } catch (error) {
-        console.error(colors.red('Error terminating agent:'), error.message);
+        console.error(colors.red('Error terminating agent:'), error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
-    }),
-  )
-  .command('info', new Command()
+    })
+  .command('info <agent-id>')
     .description('Get comprehensive information about a specific agent')
-    .arguments('<agent-id:string>')
     .option('--logs', 'Include recent log entries')
     .option('--metrics', 'Show detailed performance metrics')
     .option('--health', 'Include health diagnostic information')
     .option('--tasks', 'Show task history')
     .option('--config', 'Display agent configuration')
     .option('--json', 'Output in JSON format')
-    .action(async (options, agentId: string) => {
+    .action(async (agentId: string, options) => {
       try {
         const manager = await initializeAgentManager();
         const agent = manager.getAgent(agentId);
@@ -408,54 +415,45 @@ export const agentCommand = new Command()
         }
         
       } catch (error) {
-        console.error(colors.red('Error getting agent info:'), error.message);
+        console.error(colors.red('Error getting agent info:'), error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
-    }),
-  )
-  
-  // Additional commands
-  .command('start', new Command()
+    })
+  .command('start <agent-id>')
     .description('Start a created agent')
-    .arguments('<agent-id:string>')
-    .action(async (options, agentId: string) => {
+    .action(async (agentId: string, options) => {
       try {
         const manager = await initializeAgentManager();
         console.log(colors.cyan(`🚀 Starting agent ${agentId}...`));
         await manager.startAgent(agentId);
         console.log(colors.green('✅ Agent started successfully'));
       } catch (error) {
-        console.error(colors.red('Error starting agent:'), error.message);
+        console.error(colors.red('Error starting agent:'), error instanceof Error ? error.message : String(error));
       }
     })
-  )
-  
-  .command('restart', new Command()
+  .command('restart <agent-id>')
     .description('Restart an agent')
-    .arguments('<agent-id:string>')
-    .option('--reason <reason:string>', 'Restart reason')
-    .action(async (options, agentId: string) => {
+    .option('--reason <reason>', 'Restart reason')
+    .action(async (agentId: string, options) => {
       try {
         const manager = await initializeAgentManager();
         console.log(colors.cyan(`🔄 Restarting agent ${agentId}...`));
         await manager.restartAgent(agentId, options.reason);
         console.log(colors.green('✅ Agent restarted successfully'));
       } catch (error) {
-        console.error(colors.red('Error restarting agent:'), error.message);
+        console.error(colors.red('Error restarting agent:'), error instanceof Error ? error.message : String(error));
       }
     })
-  )
-  
-  .command('pool', new Command()
+  .command('pool')
     .description('Manage agent pools')
-    .option('--create <name:string>', 'Create a new pool')
-    .option('--template <template:string>', 'Template for pool agents')
-    .option('--min-size <min:number>', 'Minimum pool size', { default: 1 })
-    .option('--max-size <max:number>', 'Maximum pool size', { default: 10 })
+    .option('--create <name>', 'Create a new pool')
+    .option('--template <template>', 'Template for pool agents')
+    .option('--min-size <min>', 'Minimum pool size', '1')
+    .option('--max-size <max>', 'Maximum pool size', '10')
     .option('--auto-scale', 'Enable auto-scaling')
     .option('--list', 'List all pools')
-    .option('--scale <pool:string>', 'Scale a pool')
-    .option('--size <size:number>', 'Target size for scaling')
+    .option('--scale <pool>', 'Scale a pool')
+    .option('--size <size>', 'Target size for scaling')
     .action(async (options) => {
       try {
         const manager = await initializeAgentManager();
@@ -467,8 +465,8 @@ export const agentCommand = new Command()
           }
           
           const poolId = await manager.createAgentPool(options.create, options.template, {
-            minSize: options.minSize,
-            maxSize: options.maxSize,
+            minSize: parseInt(options.minSize),
+            maxSize: parseInt(options.maxSize),
             autoScale: options.autoScale
           });
           
@@ -484,7 +482,7 @@ export const agentCommand = new Command()
             return;
           }
           
-          await manager.scalePool(pool.id, options.size);
+          await manager.scalePool(pool.id, parseInt(options.size));
           console.log(colors.green(`✅ Pool scaled to ${options.size} agents`));
         }
         
@@ -515,16 +513,14 @@ export const agentCommand = new Command()
         }
         
       } catch (error) {
-        console.error(colors.red('Error managing pools:'), error.message);
+        console.error(colors.red('Error managing pools:'), error instanceof Error ? error.message : String(error));
       }
     })
-  )
-  
-  .command('health', new Command()
+  .command('health')
     .description('Monitor agent health and performance')
     .option('--watch', 'Continuously monitor health')
-    .option('--threshold <threshold:number>', 'Health threshold for alerts', { default: 0.7 })
-    .option('--agent <agent-id:string>', 'Monitor specific agent')
+    .option('--threshold <threshold>', 'Health threshold for alerts', '0.7')
+    .option('--agent <agent-id>', 'Monitor specific agent')
     .action(async (options) => {
       try {
         const manager = await initializeAgentManager();
@@ -534,7 +530,7 @@ export const agentCommand = new Command()
           
           const monitor = setInterval(() => {
             console.clear();
-            displayHealthDashboard(manager, options.threshold, options.agent);
+            displayHealthDashboard(manager, parseFloat(options.threshold), options.agent);
           }, 3000);
           
           process.on('SIGINT', () => {
@@ -543,14 +539,13 @@ export const agentCommand = new Command()
             process.exit(0);
           });
         } else {
-          displayHealthDashboard(manager, options.threshold, options.agent);
+          displayHealthDashboard(manager, parseFloat(options.threshold), options.agent);
         }
         
       } catch (error) {
-        console.error(colors.red('Error monitoring health:'), error.message);
+        console.error(colors.red('Error monitoring health:'), error instanceof Error ? error.message : String(error));
       }
-    })
-  );
+    });
 
 // === HELPER FUNCTIONS ===
 
@@ -760,11 +755,13 @@ function displayHealthDashboard(manager: AgentManager, threshold: number, specif
   console.log(`Total Agents: ${stats.totalAgents} | Active: ${stats.activeAgents} | Healthy: ${stats.healthyAgents}`);
   console.log(`Average Health: ${formatPercentage(stats.averageHealth)}`);
   
-  const unhealthyAgents = agents.filter(a => a.health < threshold);
+  const unhealthyAgents = agents.filter(a => a && a.health < threshold);
   if (unhealthyAgents.length > 0) {
     console.log(colors.red(`\n⚠️  ${unhealthyAgents.length} agents below health threshold:`));
     unhealthyAgents.forEach(agent => {
-      console.log(`  ${agent.name}: ${getHealthDisplay(agent.health)}`);
+      if (agent && agent.name) {
+        console.log(`  ${agent.name}: ${getHealthDisplay(agent.health)}`);
+      }
     });
   }
   
@@ -791,14 +788,14 @@ async function getDetailedMetrics(agentId: string, manager: AgentManager): Promi
 
 function getStatusColor(status: string): string {
   switch (status) {
-    case 'idle': return colors.green;
-    case 'busy': return colors.blue;
-    case 'error': return colors.red;
-    case 'offline': return colors.gray;
-    case 'initializing': return colors.yellow;
-    case 'terminating': return colors.yellow;
-    case 'terminated': return colors.gray;
-    default: return colors.white;
+    case 'idle': return colors.green('');
+    case 'busy': return colors.blue('');
+    case 'error': return colors.red('');
+    case 'offline': return colors.gray('');
+    case 'initializing': return colors.yellow('');
+    case 'terminating': return colors.yellow('');
+    case 'terminated': return colors.gray('');
+    default: return colors.white('');
   }
 }
 
@@ -809,10 +806,10 @@ function getStatusDisplay(status: string): string {
 
 function getHealthDisplay(health: number): string {
   const percentage = Math.round(health * 100);
-  let color = colors.green;
+  let color = colors.green('');
   
-  if (health < 0.3) color = colors.red;
-  else if (health < 0.7) color = colors.yellow;
+  if (health < 0.3) color = colors.red('');
+  else if (health < 0.7) color = colors.yellow('');
   
   return `${color}${percentage}%${colors.reset}`;
 }
@@ -827,21 +824,21 @@ function getHealthTrendDisplay(trend: string): string {
 
 function getSeverityColor(severity: string): string {
   switch (severity) {
-    case 'critical': return colors.red;
-    case 'high': return colors.red;
-    case 'medium': return colors.yellow;
-    case 'low': return colors.blue;
-    default: return colors.white;
+    case 'critical': return colors.red('');
+    case 'high': return colors.red('');
+    case 'medium': return colors.yellow('');
+    case 'low': return colors.blue('');
+    default: return colors.white('');
   }
 }
 
 function getLogLevelColor(level: string): string {
   switch (level.toLowerCase()) {
-    case 'error': return colors.red;
-    case 'warn': return colors.yellow;
-    case 'info': return colors.blue;
-    case 'debug': return colors.gray;
-    default: return colors.white;
+    case 'error': return colors.red('');
+    case 'warn': return colors.yellow('');
+    case 'info': return colors.blue('');
+    case 'debug': return colors.gray('');
+    default: return colors.white('');
   }
 }
 

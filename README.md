@@ -1,11 +1,11 @@
-# 🌊 Claude-Flow v1.0.72: Advanced AI Agent Orchestration Platform
+# 🌊 Klaude-Flow v1.0.72: Advanced AI Agent Orchestration Platform
 
 <div align="center">
 
-[![🌟 Star on GitHub](https://img.shields.io/github/stars/ruvnet/claude-code-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/ruvnet/claude-code-flow)
-[![📦 NPX Ready](https://img.shields.io/npm/v/claude-flow?style=for-the-badge&logo=npm&color=blue&label=v1.0.72)](https://www.npmjs.com/package/claude-flow)
-[![⚡ Claude Code](https://img.shields.io/badge/Claude%20Code-Ready-green?style=for-the-badge&logo=anthropic)](https://github.com/ruvnet/claude-code-flow)
-[![🦕 Multi-Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Deno-blue?style=for-the-badge&logo=javascript)](https://github.com/ruvnet/claude-code-flow)
+[![🌟 Star on GitHub](https://img.shields.io/github/stars/KooshaPari/klaude-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/KooshaPari/klaude-flow)
+[![📦 NPX Ready](https://img.shields.io/npm/v/klaude-flow?style=for-the-badge&logo=npm&color=blue&label=v1.0.72)](https://www.npmjs.com/package/klaude-flow)
+[![⚡ Claude Code](https://img.shields.io/badge/Klaude%20Code-Ready-green?style=for-the-badge&logo=anthropic)](https://github.com/KooshaPari/klaude-flow)
+[![🦕 Multi-Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Deno-blue?style=for-the-badge&logo=javascript)](https://github.com/KooshaPari/klaude-flow)
 [![⚡ TypeScript](https://img.shields.io/badge/TypeScript-Full%20Support-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![🛡️ MIT License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge&logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
 
@@ -13,10 +13,9 @@
 
 ## 🎯 **Transform Your Development Workflow**
 
-**Claude-Flow** is the ultimate orchestration platform that revolutionizes how you work with Claude Code. Coordinate **multiple AI agents** simultaneously, manage complex workflows, and build sophisticated applications with AI-powered development.
+**Klaude-Flow** is the ultimate orchestration platform that revolutionizes how you work with Claude Code. Coordinate **multiple AI agents** simultaneously, manage complex workflows, and build sophisticated applications with AI-powered development.
 
-> 🔥 **One command to rule them all**: `npx claude-flow@latest init --sparc` - Deploy a full AI agent coordination system in seconds!
-
+> 🔥 **One command to rule them all**: `npx klaude-flow@latest init --sparc` - Deploy a full AI agent coordination system in seconds!
 
 ## 🚀 **What's New in v1.0.72**
 
@@ -47,336 +46,376 @@
 ### 🚀 **Instant Setup**
 ```bash
 # Install and initialize with SPARC development environment
-npx claude-flow@latest init --sparc
+npx klaude-flow@latest init --sparc
 
-# Use the local wrapper (created by init)
-./claude-flow start --ui --port 3000
-
-# Run SPARC commands
-./claude-flow sparc "build a REST API"
+# Or quick install
+npm install -g klaude-flow
+klaude-flow init --sparc
 ```
 
-### 🎛️ **SPARC Development Modes** (17 Specialized Agents)
+### 🎯 **Core Commands**
 ```bash
-# List all available SPARC modes
-./claude-flow sparc modes
+# 🤖 AI Agent Orchestration
+klaude-flow agent spawn researcher --name "DataAnalyst"
+klaude-flow agent spawn coder --name "BackendDev"
+klaude-flow swarm "Build REST API with authentication" --strategy development
 
-# Run specific development workflows
-./claude-flow sparc run coder "implement user authentication"
-./claude-flow sparc run architect "design microservice architecture"
-./claude-flow sparc tdd "create test suite for API"
+# 📋 Task Management
+klaude-flow task create "Design user authentication system"
+klaude-flow workflow examples/authentication-flow.json
+
+# 🧠 Memory Management
+klaude-flow memory store "api_specs" "OpenAPI 3.0 specifications"
+klaude-flow memory retrieve "api_specs"
+
+# 🔧 SPARC Development Modes
+klaude-flow sparc "Implement user login system" # Default orchestrator
+klaude-flow sparc run tdd "User authentication with JWT"
+klaude-flow sparc run researcher "Compare auth frameworks"
 ```
 
-## 🏗️ **Core Features**
+## 🤖 **AI Agent Types**
 
-### 🤖 **Multi-Agent Orchestration**
-- **Parallel Execution**: Run up to 10 agents concurrently with BatchTool
-- **Smart Coordination**: Intelligent task distribution and load balancing
-- **Memory Sharing**: Persistent knowledge bank across all agents
-- **Real-time Monitoring**: Live dashboard for agent status and progress
+### 🧠 **Specialized Agents**
+- **🔍 Researcher**: Web research, data analysis, documentation
+- **👨‍💻 Coder**: Full-stack development, debugging, testing
+- **🏗️ Architect**: System design, architecture decisions
+- **🔬 Analyst**: Data analysis, performance optimization
+- **🧪 Tester**: Quality assurance, test automation
+- **📝 Reviewer**: Code review, security analysis
+- **🎨 Designer**: UI/UX design, prototyping
+- **🚀 Optimizer**: Performance tuning, resource management
 
-### 🧠 **SPARC Development Framework**
-- **17 Specialized Modes**: Architect, Coder, TDD, Security, DevOps, and more
-- **Workflow Orchestration**: Complete development lifecycle automation
-- **Interactive & Non-interactive**: Flexible execution modes
-- **Boomerang Pattern**: Iterative development with continuous refinement
-
-### 📊 **Advanced Monitoring & Analytics**
-- **System Health Dashboard**: Real-time metrics and performance tracking
-- **Task Coordination**: Dependency management and conflict resolution
-- **Terminal Pool Management**: Efficient resource utilization
-- **Coverage Reports**: Comprehensive test and code coverage analysis
-
----
-
-## 🛠️ **Installation & Setup**
-
-### **Method 1: Quick Start with NPX (Recommended)**
+### 🌊 **Swarm Coordination**
 ```bash
-# Initialize with full SPARC environment
-npx claude-flow@latest init --sparc
-
-# This creates:
-# ✓ Local ./claude-flow wrapper script
-# ✓ .claude/ directory with configuration
-# ✓ CLAUDE.md (project instructions for Claude Code)
-# ✓ .roomodes (17 pre-configured SPARC modes)
-# ✓ Swarm command documentation
-
-# Start using immediately
-./claude-flow start --ui --port 3000
-```
-
-### **Method 2: Global Installation**
-```bash
-# Install globally
-npm install -g claude-flow
-
-# Initialize anywhere
-claude-flow init --sparc
-
-# Use directly
-claude-flow start --ui
-```
-
-### **Method 3: Local Project Installation**
-```bash
-# Add to project
-npm install claude-flow --save-dev
-
-# Initialize
-npx claude-flow init --sparc
-
-# Use with local wrapper
-./claude-flow start --ui
-```
-
----
-
-## 🎮 **Usage Examples**
-
-### 🚀 **Basic Operations**
-```bash
-# Check system status
-./claude-flow status
-
-# Start orchestration with Web UI
-./claude-flow start --ui --port 3000
-
-# Check MCP server status
-./claude-flow mcp status
-
-# Manage agents
-./claude-flow agent spawn researcher --name "DataBot"
-./claude-flow agent info agent-123
-./claude-flow agent terminate agent-123
-```
-
-### 🔥 **Advanced Workflows**
-
-#### **Multi-Agent Development**
-```bash
-# Deploy swarm for full-stack development
-./claude-flow swarm "Build e-commerce platform" \
-  --strategy development \
+# Research swarm with distributed coordination
+klaude-flow swarm "Research modern web frameworks" \
+  --strategy research \
+  --mode distributed \
   --max-agents 5 \
   --parallel \
   --monitor
 
-# BatchTool parallel development
-batchtool run --parallel \
-  "./claude-flow sparc run architect 'design user auth'" \
-  "./claude-flow sparc run code 'implement login API'" \
-  "./claude-flow sparc run tdd 'create auth tests'" \
-  "./claude-flow sparc run security-review 'audit auth flow'"
+# Development swarm with hierarchical structure
+klaude-flow swarm "Build e-commerce platform" \
+  --strategy development \
+  --mode hierarchical \
+  --max-agents 10 \
+  --output json
 ```
 
-#### **SPARC Development Modes**
+## 🔧 **SPARC Development System**
+
+### 🎯 **17 Available Modes**
 ```bash
-# Complete development workflow
-./claude-flow sparc run ask "research best practices for microservices"
-./claude-flow sparc run architect "design scalable architecture"
-./claude-flow sparc run code "implement user service"
-./claude-flow sparc run tdd "create comprehensive test suite"
-./claude-flow sparc run integration "integrate all services"
-./claude-flow sparc run devops "setup CI/CD pipeline"
+klaude-flow sparc modes  # List all modes
+
+# Core development modes
+klaude-flow sparc run orchestrator "Coordinate team development"
+klaude-flow sparc run coder "Implement payment system"
+klaude-flow sparc run researcher "Analyze market trends"
+klaude-flow sparc run tdd "Build user auth with tests"
+klaude-flow sparc run architect "Design microservices architecture"
+klaude-flow sparc run reviewer "Security audit authentication"
+klaude-flow sparc run debugger "Fix performance issues"
+klaude-flow sparc run tester "Automated testing suite"
+klaude-flow sparc run analyzer "Code quality analysis"
+klaude-flow sparc run optimizer "Database performance tuning"
+klaude-flow sparc run documenter "API documentation"
+klaude-flow sparc run designer "UI/UX wireframes"
+klaude-flow sparc run innovator "Explore new technologies"
+
+# Coordination modes
+klaude-flow sparc run swarm-coordinator "Multi-agent coordination"
+klaude-flow sparc run memory-manager "Knowledge base management"
+klaude-flow sparc run batch-executor "Parallel task execution"
+klaude-flow sparc run workflow-manager "Process automation"
 ```
 
-#### **Memory & Coordination**
+## 💾 **Memory & Knowledge Management**
+
+### 🧠 **Persistent Memory**
 ```bash
-# Store and query project knowledge
-./claude-flow memory store requirements "User auth with JWT"
-./claude-flow memory store architecture "Microservice design patterns"
-./claude-flow memory query auth
+# Store and retrieve project knowledge
+klaude-flow memory store "architecture/decisions" "microservices with API gateway"
+klaude-flow memory store "tech/stack" "React, Node.js, PostgreSQL"
+klaude-flow memory get "architecture/decisions"
 
-# Task coordination
-./claude-flow task create research "Market analysis for AI tools"
-./claude-flow task workflow examples/development-pipeline.json
+# Memory operations
+klaude-flow memory list                    # List all stored keys
+klaude-flow memory search "authentication" # Search memory
+klaude-flow memory export backup.json     # Export memory
+klaude-flow memory import backup.json     # Import memory
+klaude-flow memory stats                  # Usage statistics
+klaude-flow memory cleanup                # Clean unused entries
 ```
 
----
-
-## 📋 **Available Commands**
-
-### **Core Commands**
-| Command | Description | Example |
-|---------|-------------|---------|
-| `init` | Initialize project with Claude integration | `./claude-flow init --sparc` |
-| `start` | Start orchestration system | `./claude-flow start --ui` |
-| `status` | Show system health and metrics | `./claude-flow status` |
-| `agent` | Manage AI agents and hierarchies | `./claude-flow agent spawn researcher` |
-| `swarm` | Advanced multi-agent coordination | `./claude-flow swarm "Build API" --parallel` |
-
-### **SPARC Development Modes**
-| Mode | Purpose | Example |
-|------|---------|---------|
-| `architect` | System design and architecture | `./claude-flow sparc run architect "design API"` |
-| `code` | Code development and implementation | `./claude-flow sparc run code "user authentication"` |
-| `tdd` | Test-driven development | `./claude-flow sparc run tdd "payment system"` |
-| `security-review` | Security auditing and analysis | `./claude-flow sparc run security-review "auth flow"` |
-| `integration` | System integration and testing | `./claude-flow sparc run integration "microservices"` |
-| `devops` | Deployment and CI/CD | `./claude-flow sparc run devops "k8s deployment"` |
-
-### **Memory & Coordination**
-| Command | Description | Example |
-|---------|-------------|---------|
-| `memory store` | Store information in knowledge bank | `./claude-flow memory store key "value"` |
-| `memory query` | Search stored information | `./claude-flow memory query "authentication"` |
-| `task create` | Create and manage tasks | `./claude-flow task create research "AI trends"` |
-| `monitor` | Real-time system monitoring | `./claude-flow monitor --dashboard` |
-
-### **Enterprise Commands**
-| Command | Description | Example |
-|---------|-------------|---------|
-| `project` | Project lifecycle management | `./claude-flow project create "API Project" --type web-app` |
-| `deploy` | Deployment automation & strategies | `./claude-flow deploy create "v1.2.0" --strategy blue-green` |
-| `cloud` | Multi-cloud infrastructure management | `./claude-flow cloud resources create "web-server" compute` |
-| `security` | Security scanning & compliance | `./claude-flow security scan "Vulnerability Check" ./src` |
-| `analytics` | Performance analytics & insights | `./claude-flow analytics insights --timerange 7d` |
-| `audit` | Enterprise audit logging | `./claude-flow audit report compliance --framework SOC2` |
-
----
-
-## 🏗️ **Architecture Overview**
-
-### **Multi-Layer Agent System**
-```
-┌─────────────────────────────────────────────────────────┐
-│                 BatchTool Orchestrator                  │
-├─────────────────────────────────────────────────────────┤
-│  Agent 1    Agent 2    Agent 3    Agent 4    Agent 5   │
-│ Architect │   Coder   │   TDD    │ Security │  DevOps   │
-├─────────────────────────────────────────────────────────┤
-│              Shared Memory Bank & Coordination          │
-├─────────────────────────────────────────────────────────┤
-│         Terminal Pool & Resource Management             │
-├─────────────────────────────────────────────────────────┤
-│              Claude Code Integration Layer              │
-└─────────────────────────────────────────────────────────┘
-```
-
-### **Key Components**
-- **🎛️ Orchestrator**: Central coordination and task distribution
-- **🤖 Agent Pool**: Specialized AI agents for different domains
-- **🧠 Memory Bank**: Persistent knowledge sharing across agents
-- **📊 Monitor**: Real-time metrics and health monitoring
-- **🔗 MCP Server**: Model Context Protocol for tool integration
-
----
-
-## 🧪 **Testing & Quality Assurance**
-
-### **Comprehensive Test Coverage**
+### 🔄 **Cross-Agent Coordination**
 ```bash
-# Run full test suite
-npm test
-
-# Run specific test categories
-npm run test:unit        # Unit tests
-npm run test:integration # Integration tests
-npm run test:e2e         # End-to-end tests
-
-# Generate coverage reports
-npm run test:coverage
-
-# Lint and typecheck
-npm run lint
-npm run typecheck
+# Agents automatically share knowledge through memory
+klaude-flow sparc run architect "Design auth system"  # Stores decisions
+klaude-flow sparc run coder "Implement auth based on memory specs"  # Uses stored decisions
+klaude-flow swarm "Build auth system" --memory-driven  # All agents share knowledge
 ```
 
-### **Quality Metrics (v1.0.72)**
-- **✅ Project-Focused**: CLAUDE.md explicitly guides building user applications
-- **✅ Clear Instructions**: No confusion about modifying claude-flow itself
-- **✅ Real Examples**: All documentation shows building actual applications
-- **✅ NPM Publishing**: Fully compatible with npx and global installation
-- **✅ Cross-Platform**: Windows, Mac, and Linux support
+## 🌐 **MCP Server Integration**
 
----
-
-## 📚 **Documentation & Resources**
-
-### **Getting Started**
-- [🚀 Quick Start Guide](./docs/quick-start.md)
-- [⚙️ Configuration Options](./docs/configuration.md)
-- [🤖 Agent Management](./docs/agents.md)
-- [🧠 SPARC Development](./docs/sparc-modes.md)
-
-### **Advanced Topics**
-- [🔧 BatchTool Integration](./docs/batchtool.md)
-- [📊 Monitoring & Analytics](./docs/monitoring.md)
-- [🔗 MCP Server Setup](./docs/mcp-integration.md)
-- [🔒 Security Best Practices](./docs/security.md)
-
-### **API Reference**
-- [📖 Command Reference](./docs/commands.md)
-- [🎛️ Configuration Schema](./docs/config-schema.md)
-- [🔌 Plugin Development](./docs/plugins.md)
-- [🛠️ Troubleshooting](./docs/troubleshooting.md)
-
----
-
-## 🤝 **Contributing**
-
-We welcome contributions! Here's how to get started:
-
-### **Development Setup**
+### 🔧 **MCP Server Management**
 ```bash
-# Clone the repository
-git clone https://github.com/ruvnet/claude-code-flow.git
-cd claude-code-flow
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Run tests
-npm test
-
-# Link for local development
-npm link
+# Start MCP server for external integrations
+klaude-flow mcp start --port 3001 --host 0.0.0.0
+klaude-flow mcp status
+klaude-flow mcp tools  # List available tools
 ```
 
-### **Contributing Guidelines**
-- 🐛 **Bug Reports**: Use GitHub issues with detailed reproduction steps
-- 💡 **Feature Requests**: Propose new features with use cases
-- 🔧 **Pull Requests**: Follow our coding standards and include tests
-- 📚 **Documentation**: Help improve docs and examples
+### 🔌 **External Integrations**
+- **GitHub**: Repository management, PR automation
+- **Slack**: Team notifications, progress updates
+- **Jira**: Issue tracking, project management
+- **Docker**: Container orchestration
+- **AWS**: Cloud deployment, infrastructure
+
+## 🎛️ **Advanced Features**
+
+### 🔍 **System Monitoring**
+```bash
+# Real-time system monitoring
+klaude-flow monitor          # Dashboard view
+klaude-flow status           # Current system status
+klaude-flow agent list       # Active agents
+klaude-flow task list        # Task queue
+```
+
+### 🎨 **Web UI Dashboard**
+```bash
+# Launch web-based UI
+klaude-flow start --ui --port 3000
+# Access at http://localhost:3000
+```
+
+### 🏢 **Enterprise Features**
+```bash
+# Project management (Enterprise)
+klaude-flow project create "ecommerce-platform"
+klaude-flow project switch "ecommerce-platform"
+
+# Cloud deployment (Enterprise)
+klaude-flow deploy production --platform aws
+klaude-flow cloud scale --instances 5
+
+# Security & compliance (Enterprise)
+klaude-flow security scan
+klaude-flow security audit
+klaude-flow analytics dashboard
+```
+
+## 🔧 **Configuration & Setup**
+
+### ⚙️ **Configuration Management**
+```bash
+# Configuration commands
+klaude-flow config show      # View current config
+klaude-flow config get agents.maxConcurrent
+klaude-flow config set agents.maxConcurrent 10
+klaude-flow config init      # Initialize default config
+klaude-flow config validate  # Validate configuration
+```
+
+### 🎯 **Project Initialization**
+```bash
+# Initialize new project
+klaude-flow init                    # Basic setup
+klaude-flow init --sparc           # Full SPARC environment
+klaude-flow init --enterprise      # Enterprise features
+klaude-flow init --template react  # Template-based setup
+```
+
+## 🚀 **Workflow Examples**
+
+### 🔬 **Research Workflow**
+```bash
+# Multi-agent research coordination
+klaude-flow swarm "Research authentication best practices" \
+  --strategy research \
+  --mode distributed \
+  --agents 3 \
+  --parallel \
+  --output research-report.json
+
+# Store findings for later use
+klaude-flow memory store "research/auth-best-practices" "$(cat research-report.json)"
+```
+
+### 🏗️ **Development Workflow**
+```bash
+# Full development lifecycle
+klaude-flow sparc run architect "Design user authentication system"
+klaude-flow sparc run coder "Implement auth based on memory architecture"
+klaude-flow sparc run tester "Create comprehensive auth tests"
+klaude-flow sparc run reviewer "Security audit of auth implementation"
+klaude-flow sparc run documenter "Create auth API documentation"
+```
+
+### 🔄 **Continuous Integration**
+```bash
+# Automated CI/CD workflow
+klaude-flow workflow ci/cd-pipeline.json
+klaude-flow task create "Run test suite" --trigger git-push
+klaude-flow task create "Deploy to staging" --depends test-success
+```
+
+## 📊 **Performance & Scaling**
+
+### ⚡ **Performance Features**
+- **Parallel Execution**: Multiple agents work simultaneously
+- **Resource Management**: Intelligent load balancing
+- **Caching**: Memory-based caching for repeated operations
+- **Batch Processing**: Efficient bulk operations
+- **Connection Pooling**: Optimized resource usage
+
+### 📈 **Scaling Options**
+```bash
+# Scale agent capacity
+klaude-flow config set agents.maxConcurrent 20
+klaude-flow config set memory.maxSize 1GB
+klaude-flow config set tasks.batchSize 50
+
+# Distributed mode
+klaude-flow swarm "Large scale analysis" \
+  --mode distributed \
+  --max-agents 50 \
+  --load-balancing round-robin
+```
+
+## 🛡️ **Security & Compliance**
+
+### 🔒 **Security Features**
+- **Input Validation**: All inputs sanitized and validated
+- **Access Control**: Role-based permissions
+- **Audit Logging**: Complete operation logging
+- **Secret Management**: Secure credential storage
+- **Network Security**: TLS encryption for all communications
+
+### 📋 **Compliance Tools**
+```bash
+# Security auditing
+klaude-flow security scan --full
+klaude-flow security audit --compliance sox
+klaude-flow security report --format pdf
+```
+
+## 🎓 **Learning & Examples**
+
+### 📚 **Documentation**
+- **[Quick Start Guide](docs/quickstart.md)**: Get up and running
+- **[API Reference](docs/api.md)**: Complete API documentation
+- **[Agent Development](docs/agents.md)**: Create custom agents
+- **[Workflow Design](docs/workflows.md)**: Design complex workflows
+- **[Best Practices](docs/best-practices.md)**: Recommended patterns
+
+### 🎯 **Example Projects**
+```bash
+# Clone example projects
+git clone https://github.com/KooshaPari/klaude-flow-examples
+cd klaude-flow-examples
+
+# Run examples
+klaude-flow workflow examples/ecommerce-build.json
+klaude-flow swarm examples/research-analysis.json
+```
+
+## 🤝 **Community & Support**
+
+### 💬 **Community Resources**
+- **[GitHub Discussions](https://github.com/KooshaPari/klaude-flow/discussions)**: Community Q&A
+- **[Discord Server](https://discord.gg/klaude-flow)**: Real-time chat
+- **[Twitter](https://twitter.com/KlaudeFlow)**: Updates and announcements
+- **[Blog](https://blog.klaude-flow.dev)**: Tutorials and insights
+
+### 🐛 **Issue Reporting**
+- **[Bug Reports](https://github.com/KooshaPari/klaude-flow/issues)**: Report issues
+- **[Feature Requests](https://github.com/KooshaPari/klaude-flow/issues)**: Request new features
+- **[Security Issues](mailto:security@klaude-flow.dev)**: Report security concerns
+
+## 🔄 **Migration & Updates**
+
+### 📈 **Version Updates**
+```bash
+# Update to latest version
+npm update -g klaude-flow
+klaude-flow version                  # Check current version
+klaude-flow migrate --check          # Check migration status
+klaude-flow migrate --run            # Run migrations
+```
+
+### 🔄 **Migration Tools**
+```bash
+# Migration management
+klaude-flow migrate status           # Migration status
+klaude-flow migrate rollback         # Rollback last migration
+klaude-flow migrate validate         # Validate migration
+```
+
+## 🧪 **Testing & Quality**
+
+### 🔬 **Testing Features**
+```bash
+# Built-in testing support
+klaude-flow test run                 # Run all tests
+klaude-flow test coverage            # Coverage report
+klaude-flow test performance         # Performance tests
+klaude-flow test integration         # Integration tests
+```
+
+### 📊 **Quality Metrics**
+```bash
+# Code quality analysis
+klaude-flow analyze code-quality     # Code quality metrics
+klaude-flow analyze security         # Security analysis
+klaude-flow analyze performance      # Performance analysis
+```
+
+## 📄 **License & Legal**
+
+### 📋 **License Information**
+- **License**: MIT License
+- **Copyright**: © 2024 KooshaPari
+- **Open Source**: Full source code available
+- **Commercial Use**: Permitted under MIT license
+
+### ⚖️ **Terms of Service**
+- **Usage Policy**: Responsible AI usage required
+- **Privacy Policy**: Data protection guaranteed
+- **Support Policy**: Community and enterprise support available
 
 ---
 
-## 📄 **License**
+## 🎯 **Get Started Today**
 
-MIT License - see [LICENSE](./LICENSE) for details.
+Ready to revolutionize your development workflow? Start with Klaude-Flow today:
 
----
+```bash
+# Install globally
+npm install -g klaude-flow
 
-## 🎉 **Acknowledgments**
+# Initialize your project
+klaude-flow init --sparc
 
-- **Anthropic**: For the amazing Claude AI that powers this platform
-- **Node.js Team**: For the excellent JavaScript runtime
-- **Open Source Community**: For contributions and feedback
-- **SPARC Methodology**: For the structured development approach
+# Deploy your first swarm
+klaude-flow swarm "Build a modern web application" --strategy development --parallel
+
+# Start the monitoring dashboard
+klaude-flow start --ui --port 3000
+```
+
+**Join thousands of developers who are already using Klaude-Flow to build the future of AI-powered development!**
+
+[![🌟 Star on GitHub](https://img.shields.io/github/stars/KooshaPari/klaude-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/KooshaPari/klaude-flow)
+[![📦 Get Started](https://img.shields.io/badge/Get%20Started-NPX%20Install-blue?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/klaude-flow)
 
 ---
 
 <div align="center">
-
-### **🚀 Ready to transform your development workflow?**
-
-```bash
-npx claude-flow@latest init --sparc
-```
-
-**Join thousands of developers already using Claude-Flow!**
-
-[![GitHub](https://img.shields.io/badge/GitHub-ruvnet/claude--code--flow-blue?style=for-the-badge&logo=github)](https://github.com/ruvnet/claude-code-flow)
-[![NPM](https://img.shields.io/badge/NPM-claude--flow-red?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/claude-flow)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-purple?style=for-the-badge&logo=discord)](https://discord.gg/claude-flow)
-
----
-
-**Built with ❤️ by [rUv](https://github.com/ruvnet) | Powered by Claude AI**
-
+<b>Built with ❤️ by KooshaPari</b><br>
+<sub>Empowering developers with AI-powered orchestration</sub>
 </div>

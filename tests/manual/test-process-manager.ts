@@ -4,7 +4,7 @@
  */
 
 import { ProcessManager } from '../../src/cli/commands/start/process-manager.ts';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../src/utils/colors.js';
 
 async function testProcessManager() {
   console.log(colors.cyan.bold('Testing ProcessManager...'));

@@ -5,7 +5,7 @@
 
 import { ProcessManager } from '../../src/cli/commands/start/process-manager.ts';
 import { ProcessUI } from '../../src/cli/commands/start/process-ui.ts';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../src/utils/colors.js';
 
 async function testProcessUI() {
   console.log(colors.cyan.bold('Testing ProcessUI...'));

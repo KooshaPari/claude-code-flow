@@ -2,7 +2,8 @@
  * Shell completion generator for Claude-Flow CLI
  */
 
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../utils/colors.js';
+import { env, fs } from '../utils/runtime.js';
 
 export class CompletionGenerator {
   private commands = [
@@ -40,7 +41,7 @@ export class CompletionGenerator {
   }
 
   private async detectShell(): Promise<string> {
-    const shell = Deno.env.get('SHELL') || '';
+    const shell = env.get('SHELL') || '';
     
     if (shell.includes('bash')) return 'bash';
     if (shell.includes('zsh')) return 'zsh';
@@ -473,15 +474,15 @@ complete -f -c claude-flow -n '__fish_claude_flow_using_command completion' -a '
     const possiblePaths = [
       '/etc/bash_completion.d/claude-flow',
       '/usr/local/etc/bash_completion.d/claude-flow',
-      `${Deno.env.get('HOME')}/.local/share/bash-completion/completions/claude-flow`,
-      `${Deno.env.get('HOME')}/.bash_completion.d/claude-flow`
+      `${env.get('HOME')}/.local/share/bash-completion/completions/claude-flow`,
+      `${env.get('HOME')}/.bash_completion.d/claude-flow`
     ];
 
     for (const path of possiblePaths) {
       try {
         const dir = path.substring(0, path.lastIndexOf('/'));
-        await Deno.mkdir(dir, { recursive: true });
-        await Deno.writeTextFile(path, script);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeTextFile(path, script);
         
         console.log(colors.green('✓ Bash completion installed'));
         console.log(`${colors.white('Location:')} ${path}`);
@@ -499,7 +500,7 @@ complete -f -c claude-flow -n '__fish_claude_flow_using_command completion' -a '
 
   private async installZshCompletion(script: string): Promise<void> {
     const possiblePaths = [
-      `${Deno.env.get('HOME')}/.zsh/completions/_claude-flow`,
+      `${env.get('HOME')}/.zsh/completions/_claude-flow`,
       '/usr/local/share/zsh/site-functions/_claude-flow',
       '/usr/share/zsh/site-functions/_claude-flow'
     ];
@@ -507,8 +508,8 @@ complete -f -c claude-flow -n '__fish_claude_flow_using_command completion' -a '
     for (const path of possiblePaths) {
       try {
         const dir = path.substring(0, path.lastIndexOf('/'));
-        await Deno.mkdir(dir, { recursive: true });
-        await Deno.writeTextFile(path, script);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeTextFile(path, script);
         
         console.log(colors.green('✓ Zsh completion installed'));
         console.log(`${colors.white('Location:')} ${path}`);
@@ -526,7 +527,7 @@ complete -f -c claude-flow -n '__fish_claude_flow_using_command completion' -a '
 
   private async installFishCompletion(script: string): Promise<void> {
     const possiblePaths = [
-      `${Deno.env.get('HOME')}/.config/fish/completions/claude-flow.fish`,
+      `${env.get('HOME')}/.config/fish/completions/claude-flow.fish`,
       '/usr/local/share/fish/completions/claude-flow.fish',
       '/usr/share/fish/completions/claude-flow.fish'
     ];
@@ -534,8 +535,8 @@ complete -f -c claude-flow -n '__fish_claude_flow_using_command completion' -a '
     for (const path of possiblePaths) {
       try {
         const dir = path.substring(0, path.lastIndexOf('/'));
-        await Deno.mkdir(dir, { recursive: true });
-        await Deno.writeTextFile(path, script);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeTextFile(path, script);
         
         console.log(colors.green('✓ Fish completion installed'));
         console.log(`${colors.white('Location:')} ${path}`);

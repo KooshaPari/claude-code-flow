@@ -3,7 +3,7 @@
  */
 
 import { Command } from '@cliffy/command';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
 import { Task } from '../../utils/types.js';
 import { generateId } from '../../utils/helpers.js';
 
@@ -65,7 +65,8 @@ export const taskCommand = new Command()
     .arguments('<workflow-file:string>')
     .action(async (options: any, workflowFile: string) => {
       try {
-        const content = await Deno.readTextFile(workflowFile);
+        const { fs } = await import('../../utils/runtime.js');
+        const content = await fs.readTextFile(workflowFile);
         const workflow = JSON.parse(content);
         
         console.log(colors.green('Workflow loaded:'));

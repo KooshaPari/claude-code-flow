@@ -3,7 +3,8 @@
  */
 
 import { Command } from '@cliffy/command';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
+import { fs } from '../../utils/runtime.js';
 import { spawn } from 'node:child_process';
 import { generateId } from '../../utils/helpers.js';
 
@@ -112,7 +113,7 @@ export const claudeCommand = new Command()
     .option('--dry-run', 'Show what would be executed without running')
     .action(async (options: any, workflowFile: string) => {
       try {
-        const content = await Deno.readTextFile(workflowFile);
+        const content = await fs.readTextFile(workflowFile);
         const workflow = JSON.parse(content);
         
         console.log(colors.green('Loading workflow:'), workflow.name || 'Unnamed');

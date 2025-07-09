@@ -116,7 +116,8 @@ fi
     }
     
   } catch (err: any) {
-    console.log(`\n⚠️  Could not create local wrapper: ${err.message}`);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.log(`\n⚠️  Could not create local wrapper: ${errorMessage}`);
   }
 }
 
@@ -260,7 +261,7 @@ Mode: ${mode} | ${options.parallel ? 'Parallel' : 'Sequential'} | Memory: ${opti
     });
     
     claudeProcess.on('error', (error) => {
-      if (error.code === 'ENOENT') {
+      if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
         printError('Claude Code is not installed or not in PATH');
         console.log('\n📦 To install Claude Code:');
         console.log('  1. Install via Cursor/VS Code extension');
@@ -270,7 +271,8 @@ Mode: ${mode} | ${options.parallel ? 'Parallel' : 'Sequential'} | Memory: ${opti
         console.log(fullPrompt);
         console.log('─'.repeat(80));
       } else {
-        printError(`Failed to launch Claude Code: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to launch Claude Code: ${errorMessage}`);
       }
       // Cleanup temp file
       fs.unlink(promptFile).catch(() => {});
@@ -291,7 +293,8 @@ Mode: ${mode} | ${options.parallel ? 'Parallel' : 'Sequential'} | Memory: ${opti
       }
     });
   } catch (err) {
-    printError(`Failed to create prompt file: ${err.message}`);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    printError(`Failed to create prompt file: ${errorMessage}`);
     console.log('\n💡 Fallback - copy this prompt to use manually:');
     console.log('\n' + '─'.repeat(80));
     console.log(fullPrompt);
@@ -456,7 +459,7 @@ async function createProgram() {
   
   // Configure custom help
   program.configureHelp({
-    formatHelp: (cmd, helper) => {
+    formatHelp: (cmd: any, helper: any) => {
       let output = '';
       output += `\n${chalk.cyan.bold('🧠 Claude-Flow v' + VERSION)} - Advanced AI Agent Orchestration System\n\n`;
       
@@ -517,10 +520,10 @@ async function createProgram() {
       
       // List registered commands
       output += '\n' + chalk.yellow('Registered Commands:') + '\n';
-      const commands = cmd.commands.filter(c => !c._hidden);
-      const maxCmdLength = Math.max(...commands.map(c => c.name().length));
+      const commands = cmd.commands.filter((c: any) => !c._hidden);
+      const maxCmdLength = Math.max(...commands.map((c: any) => c.name().length));
       
-      commands.forEach(subcmd => {
+      commands.forEach((subcmd: any) => {
         const name = subcmd.name().padEnd(maxCmdLength + 2);
         const desc = subcmd.description() || '';
         output += `  ${chalk.green(name)} ${desc}\n`;
@@ -572,7 +575,8 @@ async function createProgram() {
           
           console.log('\n💡 Run "npm run build" to compile the full orchestrator');
         } else {
-          printError(`Failed to start orchestrator: ${error.message}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          printError(`Failed to start orchestrator: ${errorMessage}`);
           console.log('\n💡 Try running with --verbose for more details');
         }
       }
@@ -876,7 +880,8 @@ async function createProgram() {
         await configManager.createDefaultConfig(options.file);
         printSuccess(`Configuration initialized: ${options.file}`);
       } catch (error) {
-        printError(`Failed to initialize configuration: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to initialize configuration: ${errorMessage}`);
       }
     });
 
@@ -890,7 +895,8 @@ async function createProgram() {
         const config = configManager.show();
         console.log(JSON.stringify(config, null, 2));
       } catch (error) {
-        printError(`Failed to show configuration: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to show configuration: ${errorMessage}`);
       }
     });
 
@@ -909,7 +915,8 @@ async function createProgram() {
         }
         console.log(JSON.stringify(value, null, 2));
       } catch (error) {
-        printError(`Failed to get configuration: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to get configuration: ${errorMessage}`);
       }
     });
 
@@ -954,7 +961,8 @@ async function createProgram() {
         await configManager.save();
         printSuccess(`Set ${path} = ${JSON.stringify(parsedValue)}`);
       } catch (error) {
-        printError(`Failed to set configuration: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to set configuration: ${errorMessage}`);
       }
     });
 
@@ -967,7 +975,8 @@ async function createProgram() {
         await configManager.load(options.file);
         printSuccess('Configuration is valid');
       } catch (error) {
-        printError(`Configuration validation failed: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Configuration validation failed: ${errorMessage}`);
       }
     });
 
@@ -1010,7 +1019,8 @@ async function createProgram() {
   try {
     const { createAdvancedMemoryCommand } = await import('./commands/advanced-memory-commands.js');
     const memoryCmd = createAdvancedMemoryCommand();
-    program.addCommand(memoryCmd);
+    // Type assertion needed due to @cliffy vs commander compatibility
+    program.addCommand(memoryCmd as any);
   } catch (error) {
     // Fallback to simple memory commands if advanced ones fail to load
     const memoryCmd = program
@@ -1125,7 +1135,8 @@ async function createProgram() {
           console.log(`💾 Exported ${memoryStore.size} entries`);
           console.log('✅ Memory exported successfully');
         } catch (error: any) {
-          printError(`Failed to export memory: ${error.message}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          printError(`Failed to export memory: ${errorMessage}`);
         }
       });
 
@@ -1148,12 +1159,13 @@ async function createProgram() {
           console.log(`📥 Imported ${Object.keys(data).length} entries`);
           console.log('✅ Memory imported successfully');
         } catch (error: any) {
-          if (error.code === 'ENOENT') {
+          if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
             printError(`File not found: ${file}`);
           } else if (error instanceof SyntaxError) {
             printError(`Invalid JSON in file: ${file}`);
           } else {
-            printError(`Failed to import memory: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            printError(`Failed to import memory: ${errorMessage}`);
           }
         }
       });
@@ -1388,7 +1400,8 @@ async function createProgram() {
         // Prevent CLI from exiting
         await new Promise(() => {}); // Keep running
       } catch (error) {
-        printError(`Failed to start MCP server: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to start MCP server: ${errorMessage}`);
       }
     });
 
@@ -1441,7 +1454,8 @@ async function createProgram() {
         const { startNodeREPL } = await import('./node-repl.js');
         await startNodeREPL(options);
       } catch (error) {
-        printError(`Failed to start REPL: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to start REPL: ${errorMessage}`);
       }
     });
 
@@ -1729,7 +1743,8 @@ See .claude/commands/swarm/ for detailed documentation on each strategy.
         // Create local wrapper script
         await createLocalWrapper(options.force);
       } catch (error) {
-        printError(`Failed to initialize project: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        printError(`Failed to initialize project: ${errorMessage}`);
       }
     });
 
@@ -1994,7 +2009,7 @@ Follow the red-green-refactor cycle strictly.`;
         });
         
         claudeProcess.on('error', (error) => {
-          if (error.code === 'ENOENT') {
+          if ((error as any).code === 'ENOENT') {
             printError('Claude Code is not installed or not in PATH');
             console.log('\n📦 To install Claude Code:');
             console.log('  1. Install via Cursor/VS Code extension');
@@ -2004,7 +2019,8 @@ Follow the red-green-refactor cycle strictly.`;
             console.log(fullPrompt);
             console.log('─'.repeat(60));
           } else {
-            printError(`Failed to launch Claude Code: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            printError(`Failed to launch Claude Code: ${errorMessage}`);
           }
           // Cleanup temp file
           fs.unlink(promptFile).catch(() => {});
@@ -2023,7 +2039,8 @@ Follow the red-green-refactor cycle strictly.`;
           }
         });
       } catch (err) {
-        printError(`Failed to create prompt file: ${err.message}`);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        printError(`Failed to create prompt file: ${errorMessage}`);
         console.log('\n💡 Fallback - copy this prompt to use manually:');
         console.log('\n' + '─'.repeat(60));
         console.log(fullPrompt);
@@ -2445,9 +2462,9 @@ Follow the red-green-refactor cycle strictly.`;
       const aspects = options.aspects.split(',');
       
       console.log('\n📊 Analysis Results:');
-      models.forEach(model => {
+      models.forEach((model: any) => {
         console.log(`\n🧠 ${model}:`);
-        aspects.forEach(aspect => {
+        aspects.forEach((aspect: any) => {
           const score = Math.random() * 100;
           console.log(`  • ${aspect}: ${score.toFixed(1)}%`);
         });
@@ -2475,7 +2492,7 @@ Follow the red-green-refactor cycle strictly.`;
       const models = options.models.split(',');
       
       console.log('\n📊 Model Comparison Results:');
-      models.forEach((model, index) => {
+      models.forEach((model: any, index: any) => {
         console.log(`\n🧠 ${model}:`);
         console.log(`  Response length: ${Math.floor(Math.random() * 1000) + 500} tokens`);
         console.log(`  Response time: ${Math.floor(Math.random() * 5) + 2}s`);
@@ -2874,7 +2891,7 @@ Use ▶ to indicate actionable items`;
         });
 
         claudeProcess.on('error', (error) => {
-          if (error.code === 'ENOENT') {
+          if ((error as any).code === 'ENOENT') {
             printError('Claude Code is not installed or not in PATH');
             console.log('\n📦 To install Claude Code:');
             console.log('  1. Install via Cursor/VS Code extension');
@@ -2884,7 +2901,8 @@ Use ▶ to indicate actionable items`;
             // Simulate swarm execution
             simulateSwarmExecution(swarmConfig);
           } else {
-            printError(`Failed to launch Claude Code: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            printError(`Failed to launch Claude Code: ${errorMessage}`);
           }
           // Cleanup temp file
           fs.unlink(promptFile).catch(() => {});
@@ -2909,14 +2927,16 @@ Use ▶ to indicate actionable items`;
               await fs.writeFile(resultsPath, JSON.stringify(swarmConfig, null, 2));
               console.log(`📊 Results saved to: ${resultsPath}`);
             } catch (err) {
-              console.error(`Failed to save results: ${err.message}`);
+              const errorMessage = err instanceof Error ? err.message : String(err);
+              console.error(`Failed to save results: ${errorMessage}`);
             }
           } else if (code !== null) {
             console.log(`\n⚠️  Swarm exited with code ${code}`);
           }
         });
       } catch (err) {
-        printError(`Failed to create prompt file: ${err.message}`);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        printError(`Failed to create prompt file: ${errorMessage}`);
         // Fallback to simulation
         simulateSwarmExecution(swarmConfig);
       }
@@ -2947,7 +2967,7 @@ Use ▶ to indicate actionable items`;
     .description('Show help for a specific command')
     .action((command) => {
       if (command) {
-        const cmd = program.commands.find(c => c.name() === command);
+        const cmd = program.commands.find(c => c.name === command);
         if (cmd) {
           console.log(cmd.helpInformation());
         } else {
@@ -3074,7 +3094,8 @@ Use ▶ to indicate actionable items`;
             await fs.writeFile(path.join(sparcDir, file), content);
             console.log(`   ✅ Copied SPARC command file: ${file}`);
           } catch (copyError) {
-            console.log(`   ⚠️  Could not copy ${file}: ${copyError.message}`);
+            const errorMessage = copyError instanceof Error ? copyError.message : String(copyError);
+            console.log(`   ⚠️  Could not copy ${file}: ${errorMessage}`);
           }
         }
       }
@@ -3434,7 +3455,8 @@ async function main() {
 
     await program.parseAsync(process.argv);
   } catch (error) {
-    printError(`Failed to execute command: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    printError(`Failed to execute command: ${errorMessage}`);
     process.exit(1);
   }
 }

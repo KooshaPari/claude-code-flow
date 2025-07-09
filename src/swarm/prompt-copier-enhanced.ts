@@ -2,7 +2,9 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Worker } from 'worker_threads';
 import { PromptCopier, CopyOptions, CopyResult, FileInfo } from './prompt-copier';
-import { logger } from '../logger';
+export type { CopyOptions, CopyResult } from './prompt-copier';
+export { copyPrompts } from './prompt-copier';
+import { logger } from '../core/logger';
 
 interface WorkerPool {
   workers: Worker[];
@@ -18,7 +20,7 @@ export class EnhancedPromptCopier extends PromptCopier {
     super(options);
   }
 
-  protected async copyFilesParallel(): Promise<void> {
+  protected override async copyFilesParallel(): Promise<void> {
     const workerCount = Math.min(this.options.maxWorkers, this.fileQueue.length);
     
     // Initialize worker pool
@@ -59,7 +61,7 @@ export class EnhancedPromptCopier extends PromptCopier {
         logger.error(`Worker ${i} error:`, error);
         this.errors.push({
           file: 'worker',
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           phase: 'write'
         });
       });
@@ -160,7 +162,7 @@ export class EnhancedPromptCopier extends PromptCopier {
       } else {
         this.errors.push({
           file: result.file,
-          error: result.error,
+          error: result.error instanceof Error ? result.error.message : String(result.error),
           phase: 'write'
         });
       }
@@ -186,7 +188,7 @@ export class EnhancedPromptCopier extends PromptCopier {
   }
 
   // Override verification to use worker results
-  protected async verifyFiles(): Promise<void> {
+  protected override async verifyFiles(): Promise<void> {
     logger.info('Verifying copied files...');
     
     for (const file of this.fileQueue) {
@@ -220,7 +222,7 @@ export class EnhancedPromptCopier extends PromptCopier {
       } catch (error) {
         this.errors.push({
           file: file.path,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           phase: 'verify'
         });
       }

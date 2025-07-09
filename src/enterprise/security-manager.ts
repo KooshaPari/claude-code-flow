@@ -363,7 +363,7 @@ export class SecurityManager extends EventEmitter {
   ) {
     super();
     this.securityPath = securityPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'SecurityManager' });
     this.config = config || ConfigManager.getInstance();
   }
 
@@ -529,7 +529,7 @@ export class SecurityManager extends EventEmitter {
 
       this.addAuditEntry(scan, 'system', 'scan_failed', 'scan', {
         scanId,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
 
       await this.saveScan(scan);
@@ -1077,7 +1077,8 @@ export class SecurityManager extends EventEmitter {
           const findings = this.parseNpmAuditResults(auditResult);
           resolve(findings);
         } catch (error) {
-          reject(new Error(`Failed to parse npm audit results: ${error.message}`));
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          reject(new Error(`Failed to parse npm audit results: ${errorMessage}`));
         }
       });
 
@@ -1164,7 +1165,7 @@ export class SecurityManager extends EventEmitter {
           remediation: {
             description: vuln.recommendation || 'Update to a secure version',
             effort: 'low' as const,
-            priority: vuln.severity as SecuritySeverity,
+            priority: vuln.severity === 'info' ? 'low' : vuln.severity as 'low' | 'medium' | 'high' | 'critical',
             autoFixable: true,
             steps: [`npm update ${packageName}`],
             references: vuln.url ? [vuln.url] : []

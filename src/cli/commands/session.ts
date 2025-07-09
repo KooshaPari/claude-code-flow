@@ -3,11 +3,12 @@
  */
 
 import { Command } from '@cliffy/command';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
 import { Table } from '@cliffy/table';
 import { Confirm, Input } from '@cliffy/prompt';
 import { formatDuration, formatStatusIndicator } from '../formatter.js';
 import { generateId } from '../../utils/helpers.js';
+import { fs, processInfo } from '../../utils/runtime.js';
 
 export const sessionCommand = new Command()
   .description('Manage Claude-Flow sessions')
@@ -108,9 +109,10 @@ const SESSION_DIR = '.claude-flow/sessions';
 
 async function ensureSessionDir(): Promise<void> {
   try {
-    await Deno.mkdir(SESSION_DIR, { recursive: true });
+    await fs.mkdir(SESSION_DIR, { recursive: true });
   } catch (error) {
-    if (!(error instanceof Deno.errors.AlreadyExists)) {
+    // Ignore already exists errors
+    if (error instanceof Error && !error.message.includes('already exists') && !error.message.includes('EEXIST')) {
       throw error;
     }
   }
@@ -137,7 +139,7 @@ async function listSessions(options: any): Promise<void> {
       return;
     }
 
-    console.log(colors.cyan.bold(`Sessions (${filteredSessions.length})`));
+    console.log(colors.cyan?.bold?.(`Sessions (${filteredSessions.length})`) || `Sessions (${filteredSessions.length})`);
     console.log('─'.repeat(60));
 
     const table = new Table()
@@ -187,14 +189,14 @@ async function saveSession(name: string | undefined, options: any): Promise<void
       state: currentState,
       metadata: {
         version: '1.0.0',
-        platform: Deno.build.os,
+        platform: processInfo.platform,
         checksum: await calculateChecksum(currentState)
       }
     };
 
     await ensureSessionDir();
     const filePath = `${SESSION_DIR}/${session.id}.json`;
-    await Deno.writeTextFile(filePath, JSON.stringify(session, null, 2));
+    await fs.writeTextFile(filePath, JSON.stringify(session, null, 2));
 
     console.log(colors.green('✓ Session saved successfully'));
     console.log(`${colors.white('ID:')} ${session.id}`);
@@ -222,7 +224,7 @@ async function restoreSession(sessionId: string, options: any): Promise<void> {
     }
 
     // Show session info
-    console.log(colors.cyan.bold('Session to restore:'));
+    console.log(colors.cyan?.bold?.('Session to restore:') || 'Session to restore:');
     console.log(`${colors.white('Name:')} ${session.name}`);
     console.log(`${colors.white('Description:')} ${session.description || 'None'}`);
     console.log(`${colors.white('Agents:')} ${session.state.agents.length}`);
@@ -279,7 +281,7 @@ async function restoreSession(sessionId: string, options: any): Promise<void> {
     // Update session metadata
     session.updatedAt = new Date();
     const filePath = `${SESSION_DIR}/${session.id}.json`;
-    await Deno.writeTextFile(filePath, JSON.stringify(session, null, 2));
+    await fs.writeTextFile(filePath, JSON.stringify(session, null, 2));
 
     console.log(colors.green('✓ Session restored successfully'));
     console.log(colors.yellow('Note: This is a mock implementation. In production, this would connect to the orchestrator.'));
@@ -314,7 +316,7 @@ async function deleteSession(sessionId: string, options: any): Promise<void> {
     }
 
     const filePath = `${SESSION_DIR}/${session.id}.json`;
-    await Deno.remove(filePath);
+    await fs.remove(filePath);
 
     console.log(colors.green('✓ Session deleted successfully'));
   } catch (error) {
@@ -352,7 +354,7 @@ async function exportSession(sessionId: string, outputFile: string, options: any
       content = JSON.stringify(exportData, null, 2);
     }
 
-    await Deno.writeTextFile(outputFile, content);
+    await fs.writeTextFile(outputFile, content);
 
     console.log(colors.green('✓ Session exported successfully'));
     console.log(`${colors.white('File:')} ${outputFile}`);
@@ -365,7 +367,7 @@ async function exportSession(sessionId: string, outputFile: string, options: any
 
 async function importSession(inputFile: string, options: any): Promise<void> {
   try {
-    const content = await Deno.readTextFile(inputFile);
+    const content = await fs.readTextFile(inputFile);
     const sessionData = JSON.parse(content) as SessionData;
 
     // Validate session data structure
@@ -401,7 +403,7 @@ async function importSession(inputFile: string, options: any): Promise<void> {
 
     await ensureSessionDir();
     const filePath = `${SESSION_DIR}/${sessionData.id}.json`;
-    await Deno.writeTextFile(filePath, JSON.stringify(sessionData, null, 2));
+    await fs.writeTextFile(filePath, JSON.stringify(sessionData, null, 2));
 
     console.log(colors.green('✓ Session imported successfully'));
     console.log(`${colors.white('ID:')} ${sessionData.id}`);
@@ -421,7 +423,7 @@ async function showSessionInfo(sessionId: string): Promise<void> {
       return;
     }
 
-    console.log(colors.cyan.bold('Session Information'));
+    console.log(colors.cyan?.bold?.('Session Information') || 'Session Information');
     console.log('─'.repeat(40));
     console.log(`${colors.white('ID:')} ${session.id}`);
     console.log(`${colors.white('Name:')} ${session.name}`);
@@ -431,14 +433,14 @@ async function showSessionInfo(sessionId: string): Promise<void> {
     console.log(`${colors.white('Updated:')} ${session.updatedAt.toLocaleString()}`);
     console.log();
 
-    console.log(colors.cyan.bold('State Summary'));
+    console.log(colors.cyan?.bold?.('State Summary') || 'State Summary');
     console.log('─'.repeat(40));
     console.log(`${colors.white('Agents:')} ${session.state.agents.length}`);
     console.log(`${colors.white('Tasks:')} ${session.state.tasks.length}`);
     console.log(`${colors.white('Memory Entries:')} ${session.state.memory.length}`);
     console.log();
 
-    console.log(colors.cyan.bold('Metadata'));
+    console.log(colors.cyan?.bold?.('Metadata') || 'Metadata');
     console.log('─'.repeat(40));
     console.log(`${colors.white('Version:')} ${session.metadata.version}`);
     console.log(`${colors.white('Platform:')} ${session.metadata.platform}`);
@@ -453,9 +455,9 @@ async function showSessionInfo(sessionId: string): Promise<void> {
     // File info
     const filePath = `${SESSION_DIR}/${session.id}.json`;
     try {
-      const fileInfo = await Deno.stat(filePath);
+      const fileInfo = await fs.stat(filePath);
       console.log();
-      console.log(colors.cyan.bold('File Information'));
+      console.log(colors.cyan?.bold?.('File Information') || 'File Information');
       console.log('─'.repeat(40));
       console.log(`${colors.white('Path:')} ${filePath}`);
       console.log(`${colors.white('Size:')} ${fileInfo.size} bytes`);
@@ -488,7 +490,7 @@ async function cleanSessions(options: any): Promise<void> {
       return;
     }
 
-    console.log(colors.cyan.bold(`Sessions to clean (${toDelete.length})`));
+    console.log(colors.cyan?.bold?.(`Sessions to clean (${toDelete.length})`) || `Sessions to clean (${toDelete.length})`);
     console.log('─'.repeat(50));
     
     for (const session of toDelete) {
@@ -516,7 +518,7 @@ async function cleanSessions(options: any): Promise<void> {
     for (const session of toDelete) {
       try {
         const filePath = `${SESSION_DIR}/${session.id}.json`;
-        await Deno.remove(filePath);
+        await fs.remove(filePath);
         deleted++;
       } catch (error) {
         console.error(colors.red(`Failed to delete ${session.name}:`), (error as Error).message);
@@ -533,10 +535,11 @@ async function loadAllSessions(): Promise<SessionData[]> {
   const sessions: SessionData[] = [];
   
   try {
-    for await (const entry of Deno.readDir(SESSION_DIR)) {
+    const entries = await fs.readDir(SESSION_DIR);
+    for (const entry of entries) {
       if (entry.isFile && entry.name.endsWith('.json')) {
         try {
-          const content = await Deno.readTextFile(`${SESSION_DIR}/${entry.name}`);
+          const content = await fs.readTextFile(`${SESSION_DIR}/${entry.name}`);
           const session = JSON.parse(content) as SessionData;
           
           // Convert date strings back to Date objects
@@ -550,7 +553,8 @@ async function loadAllSessions(): Promise<SessionData[]> {
       }
     }
   } catch (error) {
-    if (!(error instanceof Deno.errors.NotFound)) {
+    // Ignore directory not found errors
+    if (error instanceof Error && !error.message.includes('not found') && !error.message.includes('ENOENT')) {
       throw error;
     }
   }

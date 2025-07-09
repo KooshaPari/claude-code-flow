@@ -511,6 +511,9 @@ export class AutoStrategy extends BaseStrategy {
       'monitoring': ['monitoring-tools', 'analyzer'],
       'coordination': ['communication-tools'],
       'communication': ['communication-tools'],
+      'research-planning': ['planner', 'analyzer', 'file-system'],
+      'web-search': ['web-search', 'analyzer'],
+      'data-processing': ['data-processor', 'analyzer', 'file-system'],
       'maintenance': ['file-system', 'terminal', 'monitoring-tools'],
       'optimization': ['analyzer', 'profiler', 'file-system'],
       'validation': ['validator', 'test-runner'],
@@ -729,7 +732,7 @@ export class AutoStrategy extends BaseStrategy {
         endTime: currentTime + duration,
         tasks: [task.id.id],
         agents: [], // To be filled by allocation
-        dependencies: task.constraints.dependencies
+        dependencies: task.constraints.dependencies.map(dep => dep.id)
       });
       currentTime += duration;
     }

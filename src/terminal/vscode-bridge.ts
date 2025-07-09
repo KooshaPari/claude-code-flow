@@ -5,7 +5,58 @@
  * for terminal management and output capture.
  */
 
-import * as vscode from 'vscode';
+// VSCode types for terminal integration
+namespace VSCodeTypes {
+  export interface Terminal {
+    name: string;
+    processId: Promise<number | undefined>;
+    sendText(text: string, addNewLine?: boolean): void;
+    show(preserveFocus?: boolean): void;
+    hide(): void;
+    dispose(): void;
+  }
+  
+  export interface TerminalOptions {
+    name?: string;
+    shellPath?: string;
+    shellArgs?: string[];
+    env?: Record<string, string>;
+  }
+  
+  export interface ExtensionContext {
+    subscriptions: { dispose(): void }[];
+  }
+  
+  export interface EventEmitter<T> {
+    event: Event<T>;
+    fire(data: T): void;
+    dispose(): void;
+  }
+  
+  export interface Event<T> {
+    (listener: (e: T) => any, thisArg?: any): { dispose(): void };
+  }
+  
+  export interface WindowNamespace {
+    createTerminal(options: TerminalOptions): Terminal;
+    onDidCloseTerminal(listener: (terminal: Terminal) => void): { dispose(): void };
+    registerTerminalProfileProvider?: any;
+  }
+  
+  export interface VSCodeAPI {
+    window: WindowNamespace;
+    EventEmitter: new <T>() => EventEmitter<T>;
+  }
+}
+
+// Try to import vscode if available, otherwise use mock
+let vscode: VSCodeTypes.VSCodeAPI | undefined;
+try {
+  vscode = require('vscode') as VSCodeTypes.VSCodeAPI;
+} catch {
+  // VSCode not available, create mock
+  vscode = undefined;
+}
 
 /**
  * Terminal output processors registry
@@ -15,17 +66,21 @@ const terminalOutputProcessors = new Map<string, (data: string) => void>();
 /**
  * Active terminals registry
  */
-const activeTerminals = new Map<string, vscode.Terminal>();
+const activeTerminals = new Map<string, VSCodeTypes.Terminal>();
 
 /**
  * Terminal write emulators for output capture
  */
-const terminalWriteEmulators = new Map<vscode.Terminal, vscode.EventEmitter<string>>();
+const terminalWriteEmulators = new Map<VSCodeTypes.Terminal, VSCodeTypes.EventEmitter<string>>();
 
 /**
  * Initialize the VSCode terminal bridge
  */
-export function initializeTerminalBridge(context: vscode.ExtensionContext): void {
+export function initializeTerminalBridge(context: VSCodeTypes.ExtensionContext): void {
+  if (!vscode) {
+    throw new Error('VSCode is not available');
+  }
+  
   // Inject VSCode API into global scope for Claude-Flow
   (globalThis as any).vscode = vscode;
 
@@ -39,8 +94,8 @@ export function initializeTerminalBridge(context: vscode.ExtensionContext): void
 
   // Override terminal creation to capture output
   const originalCreateTerminal = vscode.window.createTerminal;
-  (vscode.window as any).createTerminal = function(options: vscode.TerminalOptions) {
-    const terminal = originalCreateTerminal.call(vscode.window, options) as vscode.Terminal;
+  (vscode.window as any).createTerminal = function(options: VSCodeTypes.TerminalOptions) {
+    const terminal = originalCreateTerminal.call(vscode.window, options) as VSCodeTypes.Terminal;
     
     // Create write emulator for this terminal
     const writeEmulator = new vscode.EventEmitter<string>();
@@ -61,9 +116,9 @@ export function initializeTerminalBridge(context: vscode.ExtensionContext): void
 
   // Clean up on terminal close
   context.subscriptions.push(
-    vscode.window.onDidCloseTerminal((terminal: vscode.Terminal) => {
+    vscode.window.onDidCloseTerminal((terminal: any) => {
       // Find and remove from registries
-      for (const [id, term] of activeTerminals.entries()) {
+      for (const [id, term] of Array.from(activeTerminals.entries())) {
         if (term === terminal) {
           activeTerminals.delete(id);
           terminalOutputProcessors.delete(id);
@@ -84,7 +139,7 @@ export function initializeTerminalBridge(context: vscode.ExtensionContext): void
 /**
  * Capture terminal output using various methods
  */
-function captureTerminalOutput(terminal: vscode.Terminal, terminalId: string): void {
+function captureTerminalOutput(terminal: VSCodeTypes.Terminal, terminalId: string): void {
   // Method 1: Use terminal.sendText override to capture commands
   const originalSendText = terminal.sendText;
   (terminal as any).sendText = function(text: string, addNewLine?: boolean) {
@@ -119,9 +174,9 @@ function captureTerminalOutput(terminal: vscode.Terminal, terminalId: string): v
 /**
  * Set up terminal renderer for output capture
  */
-function setupTerminalRenderer(terminal: vscode.Terminal, terminalId: string): void {
+function setupTerminalRenderer(terminal: VSCodeTypes.Terminal, terminalId: string): void {
   // Check if terminal renderer API is available
-  if (vscode.window.registerTerminalProfileProvider) {
+  if (vscode && vscode.window.registerTerminalProfileProvider !== undefined) {
     // This is a more advanced method that requires additional setup
     // It would involve creating a custom terminal profile that captures output
     
@@ -147,9 +202,13 @@ export async function createCapturedTerminal(
   shellPath?: string,
   shellArgs?: string[]
 ): Promise<{
-  terminal: vscode.Terminal;
-  onData: vscode.Event<string>;
+  terminal: VSCodeTypes.Terminal;
+  onData: VSCodeTypes.Event<string>;
 }> {
+  if (!vscode) {
+    throw new Error('VSCode is not available');
+  }
+  
   const writeEmulator = new vscode.EventEmitter<string>();
   
   const terminal = vscode.window.createTerminal({
@@ -170,7 +229,7 @@ export async function createCapturedTerminal(
  * Send command to terminal and capture output
  */
 export async function executeTerminalCommand(
-  terminal: vscode.Terminal,
+  terminal: VSCodeTypes.Terminal,
   command: string,
   timeout: number = 30000
 ): Promise<string> {
@@ -217,7 +276,7 @@ export async function executeTerminalCommand(
 /**
  * Get terminal by ID
  */
-export function getTerminalById(terminalId: string): vscode.Terminal | undefined {
+export function getTerminalById(terminalId: string): VSCodeTypes.Terminal | undefined {
   return activeTerminals.get(terminalId);
 }
 
@@ -226,7 +285,7 @@ export function getTerminalById(terminalId: string): vscode.Terminal | undefined
  */
 export function disposeTerminalBridge(): void {
   // Clean up all terminals
-  for (const terminal of activeTerminals.values()) {
+  for (const terminal of Array.from(activeTerminals.values())) {
     terminal.dispose();
   }
   activeTerminals.clear();
@@ -235,7 +294,7 @@ export function disposeTerminalBridge(): void {
   terminalOutputProcessors.clear();
   
   // Clean up write emulators
-  for (const emulator of terminalWriteEmulators.values()) {
+  for (const emulator of Array.from(terminalWriteEmulators.values())) {
     emulator.dispose();
   }
   terminalWriteEmulators.clear();

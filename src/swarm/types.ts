@@ -203,6 +203,9 @@ export type TaskType =
   | 'monitoring'     // System monitoring
   | 'coordination'   // Cross-agent coordination
   | 'communication'  // External communication
+  | 'research-planning' // Research planning tasks
+  | 'web-search'     // Web search tasks
+  | 'data-processing' // Data processing tasks
   | 'maintenance'    // System maintenance
   | 'optimization'   // Performance optimization
   | 'validation'     // Validation and verification
@@ -262,6 +265,7 @@ export interface TaskConstraints {
   // Resource constraints
   maxCost?: number;
   exclusiveAccess?: string[];
+  maxTokens?: number;
   
   // Dependency constraints
   dependencies: TaskId[];
@@ -336,6 +340,10 @@ export interface TaskDefinition {
   // History
   attempts: TaskAttempt[];
   statusHistory: TaskStatusChange[];
+  
+  // Additional metadata
+  metadata?: Record<string, any>;
+  objective?: string;
 }
 
 export interface TaskAttempt {
@@ -628,7 +636,13 @@ export type LoadBalancingStrategy =
   | 'centralized'      // Central dispatcher
   | 'distributed'      // Distributed load balancing
   | 'predictive'       // Predict and prevent overload
-  | 'reactive';        // React to overload conditions
+  | 'reactive'         // React to overload conditions
+  | 'load-based'       // Select based on current load
+  | 'performance-based' // Select based on performance history
+  | 'capability-based' // Select based on capabilities
+  | 'affinity-based'   // Prefer agents with domain affinity
+  | 'cost-based'       // Select based on cost
+  | 'hybrid';          // Combination of strategies
 
 export type FaultToleranceStrategy = 
   | 'retry'            // Retry failed tasks
@@ -892,6 +906,14 @@ export type EventType =
   | 'task.failed'
   | 'task.cancelled'
   | 'task.retried'
+  | 'task.queued'
+  
+  // Objective events
+  | 'objective.created'
+  | 'objective.started'
+  | 'objective.completed'
+  | 'objective.failed'
+  | 'objective.cancelled'
   
   // Coordination events
   | 'coordination.load_balanced'

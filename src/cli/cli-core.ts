@@ -15,6 +15,54 @@ interface CommandContext {
   config?: Record<string, unknown> | undefined;
 }
 
+// Type-safe flag access utilities
+interface CommandFlags extends Record<string, unknown> {
+  // Common flags
+  help?: boolean;
+  version?: boolean;
+  verbose?: boolean;
+  config?: string;
+  'log-level'?: string;
+  
+  // File operation flags
+  force?: boolean;
+  minimal?: boolean;
+  
+  // Numeric flags
+  priority?: number;
+  port?: number;
+  lines?: number;
+  interval?: number;
+  timeout?: number;
+  
+  // String flags
+  name?: string;
+  description?: string;
+  owner?: string;
+  namespace?: string;
+  mode?: string;
+  
+  // Array flags
+  deps?: string;
+  stakeholders?: string;
+  
+  // Boolean flags
+  parallel?: boolean;
+  background?: boolean;
+  monitor?: boolean;
+  testing?: boolean;
+  review?: boolean;
+  
+  // Shorthand flags
+  h?: boolean;
+  v?: boolean;
+  f?: boolean;
+  m?: boolean;
+  n?: string;
+  d?: boolean | number;
+  l?: number;
+}
+
 interface Command {
   name: string;
   description: string;
@@ -283,9 +331,14 @@ function info(message: string): void {
   console.log(chalk.blue(`ℹ️  ${message}`));
 }
 
+// Type-safe command context
+interface TypedCommandContext extends CommandContext {
+  flags: CommandFlags;
+}
+
 // Export for use in other modules
 export { CLI, success, error, warning, info };
-export type { Command, CommandContext, Option };
+export type { Command, CommandContext, Option, CommandFlags, TypedCommandContext };
 
 // Main CLI setup if running directly
 async function main() {

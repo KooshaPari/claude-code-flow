@@ -2,7 +2,7 @@
  * System Monitor - Real-time monitoring of system processes
  */
 
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../../utils/colors.js';
 import { ProcessManager } from './process-manager.js';
 import { SystemEvents } from '../../../utils/types.js';
 import { eventBus } from '../../../core/event-bus.js';
@@ -11,7 +11,7 @@ export class SystemMonitor {
   private processManager: ProcessManager;
   private events: any[] = [];
   private maxEvents = 100;
-  private metricsInterval?: number;
+  private metricsInterval?: NodeJS.Timeout;
 
   constructor(processManager: ProcessManager) {
     this.processManager = processManager;

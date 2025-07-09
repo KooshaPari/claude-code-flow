@@ -69,7 +69,7 @@ function printWarning(message: string) {
 }
 
 async function main() {
-  const args = Deno.args;
+  const args = process.argv.slice(2);
   const command = args[0] || 'help';
   const subArgs = args.slice(1);
 
@@ -129,9 +129,10 @@ async function main() {
   }
 }
 
-if (import.meta.main) {
+// Check if this file is being run directly
+if (process.argv[1] && process.argv[1].endsWith('index-remote.ts') || process.argv[1] && process.argv[1].endsWith('index-remote.js')) {
   main().catch((error) => {
     printError(`Error: ${error.message}`);
-    Deno.exit(1);
+    process.exit(1);
   });
 }

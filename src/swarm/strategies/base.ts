@@ -13,6 +13,11 @@ export interface StrategyMetrics {
   parallelismEfficiency: number;
   cacheHitRate: number;
   predictionAccuracy: number;
+  cacheHits: number;
+  cacheMisses: number;
+  queriesExecuted: number;
+  averageResponseTime: number;
+  credibilityScores: number[];
 }
 
 export interface TaskPattern {
@@ -31,6 +36,12 @@ export interface DecompositionResult {
   recommendedStrategy: string;
   complexity: number;
   batchGroups: TaskBatch[];
+  timestamp?: Date;
+  ttl?: number;
+  accessCount?: number;
+  lastAccessed?: Date;
+  data?: any;
+  key?: string;
 }
 
 export interface TaskBatch {
@@ -75,7 +86,12 @@ export abstract class BaseStrategy {
       resourceUtilization: 0,
       parallelismEfficiency: 0,
       cacheHitRate: 0,
-      predictionAccuracy: 0
+      predictionAccuracy: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      queriesExecuted: 0,
+      averageResponseTime: 0,
+      credibilityScores: []
     };
   }
 

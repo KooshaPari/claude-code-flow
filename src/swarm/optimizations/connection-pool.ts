@@ -5,7 +5,7 @@
 
 import { EventEmitter } from 'node:events';
 import { Logger } from '../../core/logger.js';
-import { ClaudeAPI } from '../../services/claude/api.js';
+import { ClaudeAPI, createClaudeAPI } from '../../services/claude/api.js';
 
 export interface PoolConfig {
   min: number;
@@ -78,7 +78,7 @@ export class ClaudeConnectionPool extends EventEmitter {
   
   private async createConnection(): Promise<PooledConnection> {
     const id = `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const api = new ClaudeAPI();
+    const api = createClaudeAPI();
     
     const connection: PooledConnection = {
       id,

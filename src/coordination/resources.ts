@@ -41,7 +41,7 @@ export class ResourceManager {
     this.logger.info('Shutting down resource manager');
     
     // Release all locks
-    for (const [resourceId, agentId] of this.locks) {
+    for (const [resourceId, agentId] of Array.from(this.locks.entries())) {
       await this.release(resourceId, agentId);
     }
     
@@ -192,7 +192,7 @@ export class ResourceManager {
   getWaitingRequests(): Map<string, string[]> {
     const waiting = new Map<string, string[]>();
     
-    for (const [resourceId, queue] of this.waitQueue) {
+    for (const [resourceId, queue] of Array.from(this.waitQueue.entries())) {
       if (queue.length > 0) {
         waiting.set(
           queue[0].agentId,
@@ -214,7 +214,7 @@ export class ResourceManager {
     const waitingAgents = new Set<string>();
     let totalWaiting = 0;
 
-    for (const queue of this.waitQueue.values()) {
+    for (const queue of Array.from(this.waitQueue.values())) {
       totalWaiting += queue.length;
       queue.forEach(req => waitingAgents.add(req.agentId));
     }
@@ -282,7 +282,7 @@ export class ResourceManager {
     const now = Date.now();
 
     // Clean up stale wait requests
-    for (const [resourceId, queue] of this.waitQueue) {
+    for (const [resourceId, queue] of Array.from(this.waitQueue.entries())) {
       const filtered = queue.filter(req => {
         const age = now - req.timestamp.getTime();
         if (age > this.config.resourceTimeout) {
@@ -304,7 +304,7 @@ export class ResourceManager {
     }
 
     // Clean up locks held too long
-    for (const [resourceId, agentId] of this.locks) {
+    for (const [resourceId, agentId] of Array.from(this.locks.entries())) {
       const resource = this.resources.get(resourceId);
       if (resource?.lockedAt) {
         const lockAge = now - resource.lockedAt.getTime();

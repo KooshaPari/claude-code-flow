@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false,
+    "exactOptionalPropertyTypes": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "tests/**/*",
+    "deno_modules",
+    "bin",
+    "src/cli/commands/agent.ts",
+    "src/cli/commands/agent-simple.ts",
+    "src/cli/commands/advanced-memory-commands.ts",
+    "src/terminal/vscode-bridge.ts",
+    "test-hierarchical-agents.js"
+  ]
+}

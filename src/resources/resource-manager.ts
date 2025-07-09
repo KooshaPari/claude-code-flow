@@ -385,7 +385,7 @@ export class ResourceManager extends EventEmitter {
       this.handleResourceRelease(data);
     });
 
-    this.eventBus.on('resource:usage-update', (data) => {
+    this.eventBus.on('resource:usage-update', (data: any) => {
       this.updateResourceUsage(data.resourceId, data.usage);
     });
 
@@ -856,7 +856,7 @@ export class ResourceManager extends EventEmitter {
   ): Promise<Resource | null> {
     const candidates: Array<{ resource: Resource; score: number }> = [];
 
-    for (const resource of this.resources.values()) {
+    for (const resource of Array.from(this.resources.values())) {
       if (resource.status !== 'available') continue;
 
       const score = this.calculateResourceScore(resource, requirements, priority);
@@ -1113,12 +1113,12 @@ export class ResourceManager extends EventEmitter {
   private async performMonitoring(): Promise<void> {
     try {
       // Update resource statistics
-      for (const resource of this.resources.values()) {
+      for (const resource of Array.from(this.resources.values())) {
         await this.updateResourceStatistics(resource);
       }
 
       // Update pool statistics
-      for (const pool of this.pools.values()) {
+      for (const pool of Array.from(this.pools.values())) {
         this.updatePoolStatistics(pool);
       }
 
@@ -1157,7 +1157,7 @@ export class ResourceManager extends EventEmitter {
 
     // Clean up old usage history
     const cutoff = new Date(now.getTime() - 86400000); // 24 hours
-    for (const [resourceId, history] of this.usageHistory) {
+    for (const [resourceId, history] of Array.from(this.usageHistory.entries())) {
       this.usageHistory.set(
         resourceId,
         history.filter(usage => usage.timestamp > cutoff)
@@ -1170,7 +1170,7 @@ export class ResourceManager extends EventEmitter {
   }
 
   private async evaluateScaling(): Promise<void> {
-    for (const pool of this.pools.values()) {
+    for (const pool of Array.from(this.pools.values())) {
       if (!pool.scaling.enabled) continue;
 
       const metrics = this.calculatePoolMetrics(pool);
@@ -1402,7 +1402,7 @@ export class ResourceManager extends EventEmitter {
 
   private async checkQoSViolations(): Promise<void> {
     // Check QoS for all active allocations
-    for (const allocation of this.allocations.values()) {
+    for (const allocation of Array.from(this.allocations.values())) {
       if (allocation.status !== 'active') continue;
 
       const resource = this.resources.get(allocation.resourceId);
@@ -1454,7 +1454,7 @@ export class ResourceManager extends EventEmitter {
   }
 
   private async updatePredictions(): Promise<void> {
-    for (const resource of this.resources.values()) {
+    for (const resource of Array.from(this.resources.values())) {
       const history = this.usageHistory.get(resource.id) || [];
       if (history.length < 10) continue; // Need minimum history
 

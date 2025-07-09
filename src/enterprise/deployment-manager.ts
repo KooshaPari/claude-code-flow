@@ -301,7 +301,7 @@ export class DeploymentManager extends EventEmitter {
   ) {
     super();
     this.deploymentsPath = deploymentsPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'DeploymentManager' });
     this.config = config || ConfigManager.getInstance();
   }
 
@@ -537,7 +537,8 @@ export class DeploymentManager extends EventEmitter {
       stage.status = 'failed';
       stage.endTime = new Date();
       
-      this.addLog(stage, 'error', `Stage failed: ${error.message}`, 'system');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.addLog(stage, 'error', `Stage failed: ${errorMessage}`, 'system');
       
       // Retry logic
       if (stage.retryPolicy.maxRetries > 0) {
@@ -678,7 +679,7 @@ export class DeploymentManager extends EventEmitter {
     } catch (error) {
       this.addAuditEntry(deployment, userId, 'rollback_failed', 'deployment', {
         deploymentId,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
 
       this.logger.error(`Rollback failed for deployment ${deploymentId}`, { error });

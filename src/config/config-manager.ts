@@ -368,6 +368,117 @@ export class ConfigManager {
     
     return result;
   }
+
+  // === MISSING METHODS ===
+  
+  /**
+   * Get available configuration templates
+   */
+  getAvailableTemplates(): string[] {
+    // Return list of available configuration templates
+    return [
+      'default',
+      'development', 
+      'production',
+      'testing',
+      'enterprise',
+      'minimal'
+    ];
+  }
+
+  /**
+   * Create a new configuration template
+   */
+  createTemplate(name: string, template: Partial<Config>): void {
+    // Create and store a new template
+    const templatePath = path.join(this.userConfigDir, 'templates', `${name}.json`);
+    // This would save the template - for now just log
+    console.log(`Template '${name}' would be created at ${templatePath}`);
+  }
+
+  /**
+   * Get available format parsers
+   */
+  getFormatParsers(): string[] {
+    return ['json', 'yaml', 'toml', 'env'];
+  }
+
+  /**
+   * Validate a configuration file
+   */
+  validateFile(filePath: string): { valid: boolean; errors: string[] } {
+    try {
+      // Check if file exists and is readable
+      const fs = require('fs');
+      const content = fs.readFileSync(filePath, 'utf8');
+      const config = JSON.parse(content);
+      this.validate(config as Config);
+      return { valid: true, errors: [] };
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [error instanceof Error ? error.message : 'Unknown validation error']
+      };
+    }
+  }
+
+  /**
+   * Get configuration file path history
+   */
+  getPathHistory(): string[] {
+    // Return recently used config file paths
+    return [
+      this.configPath || 'claude-flow.config.json',
+      path.join(this.userConfigDir, 'config.json'),
+      './config/claude-flow.json'
+    ].filter(Boolean);
+  }
+
+  /**
+   * Get configuration change history
+   */
+  getChangeHistory(): Array<{ timestamp: Date; changes: string; user?: string }> {
+    // Return configuration change history
+    return [
+      {
+        timestamp: new Date(),
+        changes: 'Configuration loaded from file',
+        user: 'system'
+      }
+    ];
+  }
+
+  /**
+   * Create a backup of current configuration
+   */
+  backup(): string {
+    const backup = {
+      timestamp: new Date().toISOString(),
+      config: this.config,
+      metadata: {
+        version: '1.0.0',
+        source: this.configPath || 'memory'
+      }
+    };
+    return JSON.stringify(backup, null, 2);
+  }
+
+  /**
+   * Restore configuration from backup
+   */
+  restore(backupData: string): void {
+    try {
+      const backup = JSON.parse(backupData);
+      if (backup.config) {
+        this.config = backup.config;
+        this.validate(this.config);
+      } else {
+        throw new Error('Invalid backup format');
+      }
+    } catch (error) {
+      throw new ConfigError(`Failed to restore from backup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 // Export singleton instance

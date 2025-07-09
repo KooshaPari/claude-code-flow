@@ -15,7 +15,12 @@ export { TTLMap } from './ttl-map.js';
 export type { TTLMapOptions } from './ttl-map.js';
 
 export { OptimizedExecutor } from './optimized-executor.js';
-export type { ExecutorConfig, ExecutionMetrics } from './optimized-executor.js';
+export type { ExecutorConfig, ExecutionMetrics as OptimizedExecutionMetrics } from './optimized-executor.js';
+
+// Import for internal use
+import { OptimizedExecutor } from './optimized-executor.js';
+import { ClaudeConnectionPool } from './connection-pool.js';
+import { AsyncFileManager } from './async-file-manager.js';
 
 // Re-export commonly used together
 export const createOptimizedSwarmStack = (config?: {

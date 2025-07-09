@@ -60,7 +60,8 @@ export async function initCommand(options: InitOptions = {}) {
     }
     
   } catch (error) {
-    printError(`Failed to initialize project: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    printError(`Failed to initialize project: ${errorMessage}`);
     throw error;
   }
 }

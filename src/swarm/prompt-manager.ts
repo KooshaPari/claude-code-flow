@@ -8,7 +8,7 @@ import {
   formatDuration,
   formatFileSize
 } from './prompt-utils';
-import { logger } from '../logger';
+import { logger } from '../core/logger';
 
 export interface PromptManagerOptions {
   configPath?: string;
@@ -162,7 +162,7 @@ export class PromptManager extends EventEmitter {
           copiedFiles: 0,
           failedFiles: 0,
           skippedFiles: 0,
-          errors: [{ file: source, error: error.message, phase: 'read' }],
+          errors: [{ file: source, error: error instanceof Error ? error.message : String(error), phase: 'read' }],
           duration: 0
         });
       }

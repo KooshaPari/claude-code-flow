@@ -254,7 +254,7 @@ export class VSCodeAdapter implements ITerminalAdapter {
     // Register terminal close listener
     this.terminalCloseListener = this.vscodeApi.window.onDidCloseTerminal((terminal) => {
       // Find and clean up closed terminal
-      for (const [id, wrapper] of this.terminals.entries()) {
+      for (const [id, wrapper] of Array.from(this.terminals.entries())) {
         if ((wrapper as any).vscodeTerminal === terminal) {
           this.logger.info('VSCode terminal closed', { id });
           this.terminals.delete(id);

@@ -18,9 +18,8 @@ import { MigrationAnalyzer } from './migration-analyzer';
 import { logger } from './logger';
 import { ProgressReporter } from './progress-reporter';
 import { MigrationValidator } from './migration-validator';
-import { glob } from 'glob';
-import * as inquirer from 'inquirer';
-import * as chalk from 'chalk';
+import inquirer from 'inquirer';
+import chalk from 'chalk';
 
 export class MigrationRunner {
   private options: MigrationOptions;
@@ -103,7 +102,9 @@ export class MigrationRunner {
       this.printSummary(result);
 
     } catch (error) {
-      result.errors.push({ error: error.message, stack: error.stack });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      result.errors.push({ error: errorMessage, stack: errorStack });
       this.progress.error('Migration failed');
       
       // Attempt rollback on failure
@@ -306,15 +307,7 @@ export class MigrationRunner {
       await fs.copy(claudePath, path.join(backupPath, '.claude'));
       
       // Record backed up files
-      const files = await glob('**/*', { cwd: claudePath, nodir: true });
-      for (const file of files) {
-        const content = await fs.readFile(path.join(claudePath, file), 'utf-8');
-        backup.files.push({
-          path: `.claude/${file}`,
-          content,
-          checksum: crypto.createHash('md5').update(content).digest('hex')
-        });
-      }
+      await this.addDirectoryToBackup(claudePath, '.claude', backup);
     }
 
     // Backup other important files
@@ -554,5 +547,35 @@ export class MigrationRunner {
     }
 
     console.log(chalk.gray('\n' + '─'.repeat(50)));
+  }
+
+  private async addDirectoryToBackup(
+    dir: string, 
+    baseRelativePath: string, 
+    backup: MigrationBackup
+  ): Promise<void> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      const relativePath = path.join(baseRelativePath, entry.name);
+      
+      if (entry.isDirectory()) {
+        await this.addDirectoryToBackup(fullPath, relativePath, backup);
+      } else {
+        try {
+          const content = await fs.readFile(fullPath, 'utf-8');
+          backup.files.push({
+            path: relativePath,
+            content,
+            checksum: crypto.createHash('md5').update(content).digest('hex')
+          });
+        } catch (error) {
+          // Skip binary files or files that can't be read as text
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.debug(`Skipped file ${relativePath}: ${errorMessage}`);
+        }
+      }
+    }
   }
 }

@@ -16,7 +16,7 @@ interface MessageQueue {
 interface PendingResponse {
   resolve: (response: unknown) => void;
   reject: (error: Error) => void;
-  timeout: number;
+  timeout: NodeJS.Timeout;
 }
 
 /**
@@ -89,7 +89,7 @@ export class MessageRouter {
       this.pendingResponses.set(message.id, {
         resolve: resolve as (response: unknown) => void,
         reject,
-        timeout: timeout as unknown as number,
+        timeout: timeout,
       });
     });
 

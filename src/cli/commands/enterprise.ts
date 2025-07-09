@@ -1,5 +1,6 @@
 import { Command, CommandContext } from '../cli-core.js';
 import { success, error, warning, info } from '../cli-core.js';
+import { FlagParser } from '../type-guards.js';
 import colors from 'chalk';
 import { ProjectManager, Project } from '../../enterprise/project-manager.js';
 import { DeploymentManager, Deployment, DeploymentEnvironment } from '../../enterprise/deployment-manager.js';
@@ -95,12 +96,11 @@ export const enterpriseCommands: Command[] = [
           try {
             const project = await manager.createProject({
               name,
-              description: ctx.flags.description as string || `Project: ${name}`,
-              type: (ctx.flags.type as any) || 'custom',
-              priority: (ctx.flags.priority as any) || 'medium',
-              owner: ctx.flags.owner as string || 'system',
-              stakeholders: ctx.flags.stakeholders ? 
-                (ctx.flags.stakeholders as string).split(',') : []
+              description: FlagParser.string(ctx.flags, 'description', `Project: ${name}`),
+              type: (FlagParser.string(ctx.flags, 'type', 'custom') as 'web-app' | 'api' | 'microservice' | 'infrastructure' | 'research' | 'migration' | 'custom'),
+              priority: (FlagParser.string(ctx.flags, 'priority', 'medium') as 'low' | 'medium' | 'high' | 'critical'),
+              owner: FlagParser.string(ctx.flags, 'owner', 'system'),
+              stakeholders: FlagParser.stringArray(ctx.flags, 'stakeholders', [])
             });
 
             success(`Project created: ${project.name}`);
@@ -483,7 +483,44 @@ export const enterpriseCommands: Command[] = [
                     region: ctx.flags.region as string || 'us-east-1',
                     provider: (ctx.flags.provider as any) || 'aws',
                     endpoints: ctx.flags.endpoints ? 
-                      (ctx.flags.endpoints as string).split(',') : []
+                      (ctx.flags.endpoints as string).split(',') : [],
+                    secrets: {},
+                    environment_variables: {},
+                    resources: {
+                      cpu: '1',
+                      memory: '1Gi',
+                      storage: '10Gi',
+                      replicas: 1
+                    }
+                  },
+                  healthCheck: {
+                    url: '/health',
+                    method: 'GET',
+                    expectedStatus: 200,
+                    timeout: 30000,
+                    interval: 60000,
+                    retries: 3
+                  },
+                  monitoring: {
+                    enabled: true,
+                    alerts: [],
+                    metrics: ['cpu', 'memory', 'requests'],
+                    logs: {
+                      level: 'info',
+                      retention: '30d',
+                      aggregation: true
+                    }
+                  },
+                  security: {
+                    tls: true,
+                    authentication: true,
+                    authorization: ['admin'],
+                    compliance: [],
+                    scanning: {
+                      vulnerabilities: true,
+                      secrets: true,
+                      licenses: true
+                    }
                   }
                 });
 
@@ -584,7 +621,24 @@ export const enterpriseCommands: Command[] = [
                   configuration: {
                     defaultRegion: ctx.flags.region as string || 'us-east-1',
                     availableRegions: ctx.flags.regions ? 
-                      (ctx.flags.regions as string).split(',') : []
+                      (ctx.flags.regions as string).split(',') : ['us-east-1', 'us-west-2'],
+                    services: ['compute', 'storage', 'network'],
+                    endpoints: {},
+                    features: ['auto-scaling', 'load-balancing']
+                  },
+                  status: 'inactive',
+                  quotas: {
+                    computeInstances: 100,
+                    storage: 1000,
+                    bandwidth: 10000,
+                    requests: 1000000
+                  },
+                  pricing: {
+                    currency: 'USD',
+                    computePerHour: 0.10,
+                    storagePerGB: 0.10,
+                    bandwidthPerGB: 0.09,
+                    requestsPer1000: 0.40
                   }
                 });
 
@@ -640,7 +694,8 @@ export const enterpriseCommands: Command[] = [
                   metadata: {
                     environment: ctx.flags.environment as string || 'development',
                     owner: ctx.flags.owner as string || 'system',
-                    purpose: ctx.flags.purpose as string || 'general'
+                    purpose: ctx.flags.purpose as string || 'general',
+                    lifecycle: 'permanent'
                   }
                 });
 
@@ -842,10 +897,14 @@ export const enterpriseCommands: Command[] = [
               },
               projectId: ctx.flags.project as string,
               configuration: {
+                scanner: 'default-scanner',
+                rules: ['default'],
+                excludes: [],
                 severity: ctx.flags.severity ? 
-                  (ctx.flags.severity as string).split(',') as any : undefined,
+                  (ctx.flags.severity as string).split(',') as any : ['critical', 'high', 'medium'],
                 formats: ctx.flags.format ? 
-                  (ctx.flags.format as string).split(',') : undefined
+                  (ctx.flags.format as string).split(',') : ['json'],
+                outputPath: './security-reports'
               }
             });
 
@@ -1059,7 +1118,12 @@ export const enterpriseCommands: Command[] = [
                   name,
                   description: ctx.args.slice(3).join(' ') || `Dashboard: ${name}`,
                   type: (ctx.flags.type as any) || 'operational',
-                  widgets: [] // Would be populated based on template
+                  widgets: [], // Would be populated based on template
+                  permissions: {
+                    viewers: ['all'],
+                    editors: ['admin'],
+                    public: false
+                  }
                 });
 
                 success(`Dashboard created: ${dashboard.name}`);
@@ -1389,7 +1453,10 @@ export const enterpriseCommands: Command[] = [
               },
               compliance: {
                 frameworks: ctx.flags.frameworks ? 
-                  (ctx.flags.frameworks as string).split(',') : []
+                  (ctx.flags.frameworks as string).split(',') : [],
+                controls: ctx.flags.controls ? 
+                  (ctx.flags.controls as string).split(',') : [],
+                classification: (ctx.flags.classification as any) || 'internal'
               }
             });
 
@@ -1436,8 +1503,13 @@ export const enterpriseCommands: Command[] = [
               type: reportType,
               scope: {
                 timeRange: { start, end: now },
+                systems: ctx.flags.systems ? (ctx.flags.systems as string).split(',') : [],
+                users: ctx.flags.users ? (ctx.flags.users as string).split(',') : [],
+                events: ctx.flags.events ? (ctx.flags.events as string).split(',') : [],
                 compliance: ctx.flags.framework ? [ctx.flags.framework as string] : []
-              }
+              },
+              includeRecommendations: true,
+              confidentiality: 'internal'
             });
 
             success(`Audit report generated: ${report.title}`);

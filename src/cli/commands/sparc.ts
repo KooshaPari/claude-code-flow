@@ -30,7 +30,7 @@ async function loadSparcConfig(): Promise<SparcConfig> {
     sparcConfig = JSON.parse(content);
     return sparcConfig!;
   } catch (error) {
-    throw new Error(`Failed to load SPARC configuration: ${error.message}`);
+    throw new Error(`Failed to load SPARC configuration: ${(error as Error).message}`);
   }
 }
 
@@ -81,7 +81,7 @@ async function listSparcModes(ctx: CommandContext): Promise<void> {
       info("Use --verbose for detailed descriptions");
     }
   } catch (err) {
-    error(`Failed to list SPARC modes: ${err.message}`);
+    error(`Failed to list SPARC modes: ${(err as Error).message}`);
   }
 }
 
@@ -120,7 +120,7 @@ async function showModeInfo(ctx: CommandContext): Promise<void> {
     console.log(mode.source);
 
   } catch (err) {
-    error(`Failed to show mode info: ${err.message}`);
+    error(`Failed to show mode info: ${(err as Error).message}`);
   }
 }
 
@@ -172,7 +172,7 @@ async function runSparcMode(ctx: CommandContext): Promise<void> {
     await executeClaudeWithSparc(enhancedTask, tools, instanceId, ctx.flags);
 
   } catch (err) {
-    error(`Failed to run SPARC mode: ${err.message}`);
+    error(`Failed to run SPARC mode: ${(err as Error).message}`);
   }
 }
 
@@ -253,7 +253,7 @@ async function runTddFlow(ctx: CommandContext): Promise<void> {
     success("SPARC TDD Workflow completed!");
 
   } catch (err) {
-    error(`Failed to run TDD flow: ${err.message}`);
+    error(`Failed to run TDD flow: ${(err as Error).message}`);
   }
 }
 
@@ -335,7 +335,7 @@ async function runSparcWorkflow(ctx: CommandContext): Promise<void> {
     success("SPARC workflow completed!");
 
   } catch (err) {
-    error(`Failed to run workflow: ${err.message}`);
+    error(`Failed to run workflow: ${(err as Error).message}`);
   }
 }
 
@@ -474,13 +474,14 @@ async function executeClaudeWithSparc(
       });
     });
 
-    if (status.success) {
+    const statusObj = status as { success: boolean; code?: number };
+    if (statusObj.success) {
       success(`SPARC instance ${instanceId} completed successfully`);
     } else {
-      error(`SPARC instance ${instanceId} exited with code ${status.code}`);
+      error(`SPARC instance ${instanceId} exited with code ${statusObj.code}`);
     }
   } catch (err) {
-    error(`Failed to execute Claude: ${err.message}`);
+    error(`Failed to execute Claude: ${(err as Error).message}`);
   }
 }
 

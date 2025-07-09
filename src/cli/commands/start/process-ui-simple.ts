@@ -3,9 +3,10 @@
  * Uses basic stdin reading for compatibility
  */
 
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../../utils/colors.js';
 import { ProcessManager } from './process-manager.js';
 import { ProcessInfo, ProcessStatus, SystemStats } from './types.js';
+import { stdio, textCodec, console_ } from '../../../utils/runtime.js';
 
 export class ProcessUI {
   private processManager: ProcessManager;
@@ -35,25 +36,22 @@ export class ProcessUI {
     this.running = true;
     
     // Clear screen
-    console.clear();
+    console_.clear();
 
     // Initial render
     this.render();
 
     // Simple input loop
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
-    
     while (this.running) {
       // Show prompt
-      await Deno.stdout.write(encoder.encode('\nCommand: '));
+      await stdio.stdout.write(textCodec.encode('\nCommand: '));
       
       // Read single character
       const buf = new Uint8Array(1024);
-      const n = await Deno.stdin.read(buf);
+      const n = await stdio.stdin.read(buf);
       if (n === null) break;
       
-      const input = decoder.decode(buf.subarray(0, n)).trim();
+      const input = textCodec.decode(buf.subarray(0, n)).trim();
       
       if (input.length > 0) {
         await this.handleCommand(input);
@@ -63,7 +61,7 @@ export class ProcessUI {
 
   async stop(): Promise<void> {
     this.running = false;
-    console.clear();
+    console_.clear();
   }
 
   private async handleCommand(input: string): Promise<void> {
@@ -111,7 +109,7 @@ export class ProcessUI {
   }
 
   private render(): void {
-    console.clear();
+    console_.clear();
     const processes = this.processManager.getAllProcesses();
     const stats = this.processManager.getSystemStats();
 
@@ -166,16 +164,13 @@ export class ProcessUI {
     console.log('[d] Details');
     console.log('[c] Cancel');
     
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
-    
-    await Deno.stdout.write(encoder.encode('\nAction: '));
+    await stdio.stdout.write(textCodec.encode('\nAction: '));
     
     const buf = new Uint8Array(1024);
-    const n = await Deno.stdin.read(buf);
+    const n = await stdio.stdin.read(buf);
     if (n === null) return;
     
-    const action = decoder.decode(buf.subarray(0, n)).trim().toLowerCase();
+    const action = textCodec.decode(buf.subarray(0, n)).trim().toLowerCase();
     
     switch (action) {
       case 's':
@@ -243,7 +238,7 @@ export class ProcessUI {
 
   private async waitForKey(): Promise<void> {
     const buf = new Uint8Array(1);
-    await Deno.stdin.read(buf);
+    await stdio.stdin.read(buf);
   }
 
   private getStatusDisplay(status: ProcessStatus): string {
@@ -370,11 +365,10 @@ export class ProcessUI {
       console.log(colors.yellow('⚠️  Some processes are still running.'));
       console.log('Stop all processes before exiting? [y/N]: ');
       
-      const decoder = new TextDecoder();
       const buf = new Uint8Array(1024);
-      const n = await Deno.stdin.read(buf);
+      const n = await stdio.stdin.read(buf);
       
-      if (n && decoder.decode(buf.subarray(0, n)).trim().toLowerCase() === 'y') {
+      if (n && textCodec.decode(buf.subarray(0, n)).trim().toLowerCase() === 'y') {
         await this.stopAll();
       }
     }

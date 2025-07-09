@@ -3,8 +3,9 @@
  */
 
 import { Command } from '@cliffy/command';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../utils/colors.js';
 import { Table } from '@cliffy/table';
+import { fs } from '../../utils/runtime.js';
 
 interface MemoryEntry {
   key: string;
@@ -19,7 +20,7 @@ export class SimpleMemoryManager {
 
   async load() {
     try {
-      const content = await Deno.readTextFile(this.filePath);
+      const content = await fs.readTextFile(this.filePath);
       this.data = JSON.parse(content);
     } catch {
       // File doesn't exist yet
@@ -28,8 +29,8 @@ export class SimpleMemoryManager {
   }
 
   async save() {
-    await Deno.mkdir("./memory", { recursive: true });
-    await Deno.writeTextFile(this.filePath, JSON.stringify(this.data, null, 2));
+    await fs.mkdir("./memory", { recursive: true });
+    await fs.writeTextFile(this.filePath, JSON.stringify(this.data, null, 2));
   }
 
   async store(key: string, value: string, namespace: string = "default") {
@@ -93,11 +94,11 @@ export class SimpleMemoryManager {
 
   async exportData(filePath: string) {
     await this.load();
-    await Deno.writeTextFile(filePath, JSON.stringify(this.data, null, 2));
+    await fs.writeTextFile(filePath, JSON.stringify(this.data, null, 2));
   }
 
   async importData(filePath: string) {
-    const content = await Deno.readTextFile(filePath);
+    const content = await fs.readTextFile(filePath);
     this.data = JSON.parse(content);
     await this.save();
   }

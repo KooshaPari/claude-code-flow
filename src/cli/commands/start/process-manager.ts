@@ -3,7 +3,7 @@
  */
 
 import { EventEmitter } from './event-emitter.js';
-import { colors } from '@cliffy/ansi/colors';
+import { colors } from '../../../utils/colors.js';
 import { 
   ProcessInfo, 
   ProcessType, 
@@ -19,6 +19,7 @@ import { MCPServer } from '../../../mcp/server.js';
 import { eventBus } from '../../../core/event-bus.js';
 import { logger } from '../../../core/logger.js';
 import { configManager } from '../../../core/config.js';
+import { processInfo } from '../../../utils/runtime.js';
 
 export class ProcessManager extends EventEmitter {
   private processes: Map<string, ProcessInfo> = new Map();
@@ -106,7 +107,7 @@ export class ProcessManager extends EventEmitter {
       switch (process.type) {
         case ProcessType.EVENT_BUS:
           // Event bus is already initialized globally
-          process.pid = Deno.pid;
+          process.pid = processInfo.pid;
           break;
 
         case ProcessType.MEMORY_MANAGER:

@@ -3,7 +3,7 @@
  * Designed for environments that don't support stdin raw mode
  */
 
-import readline from 'readline';
+import * as readline from 'readline';
 import chalk from 'chalk';
 
 export interface UIProcess {

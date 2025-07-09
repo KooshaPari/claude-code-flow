@@ -396,7 +396,7 @@ export class CloudManager extends EventEmitter {
   ) {
     super();
     this.cloudPath = cloudPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'CloudManager' });
     this.config = config || ConfigManager.getInstance();
   }
 
@@ -1095,7 +1095,16 @@ export class CloudManager extends EventEmitter {
       if (!Array.from(this.providers.values()).some(p => p.name === providerData.name)) {
         const provider: CloudProvider = {
           id: `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: providerData.name,
+          type: providerData.type,
           credentials: {},
+          configuration: {
+            defaultRegion: providerData.configuration.defaultRegion,
+            availableRegions: providerData.configuration.availableRegions,
+            services: providerData.configuration.services,
+            endpoints: providerData.configuration.endpoints as unknown as Record<string, string>,
+            features: providerData.configuration.features
+          },
           status: 'inactive',
           quotas: {
             computeInstances: 20,
@@ -1103,9 +1112,9 @@ export class CloudManager extends EventEmitter {
             bandwidth: 1000,
             requests: 1000000
           },
+          pricing: providerData.pricing,
           createdAt: new Date(),
-          updatedAt: new Date(),
-          ...providerData
+          updatedAt: new Date()
         };
 
         this.providers.set(provider.id, provider);

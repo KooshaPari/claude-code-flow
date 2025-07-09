@@ -2,6 +2,22 @@
  * Core type definitions for Claude-Flow
  */
 
+// Task-related types
+export interface TaskMetrics {
+  cpuUsage: number;
+  memoryUsage: number;
+  diskIO: number;
+  networkIO: number;
+  customMetrics: Record<string, number>;
+}
+
+export interface TaskLog {
+  timestamp: Date;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  metadata?: Record<string, unknown>;
+}
+
 // Import orchestrator metrics type
 export interface OrchestratorMetrics {
   uptime: number;
