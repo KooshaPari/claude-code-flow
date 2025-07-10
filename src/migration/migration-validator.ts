@@ -1,12 +1,14 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * Migration Validator - Validates successful migration
  */
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { ValidationResult, ValidationCheck } from './types';
-import { logger } from './logger';
-import chalk from 'chalk';
+import type { ValidationResult, ValidationCheck } from './types.js';
+import { logger } from './logger.js';
+import * as chalk from 'chalk';
+import { glob } from 'glob';
 
 export class MigrationValidator {
   private requiredFiles = [
@@ -147,8 +149,7 @@ export class MigrationValidator {
       }
       
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      result.errors.push(`Failed to validate ${command}: ${errorMessage}`);
+      result.errors.push(`Failed to validate ${command}: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 
@@ -197,8 +198,7 @@ export class MigrationValidator {
           }
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        result.errors.push(`Invalid .roomodes file: ${errorMessage}`);
+        result.errors.push(`Invalid .roomodes file: ${(error instanceof Error ? error.message : String(error))}`);
         check.passed = false;
       }
     }
@@ -215,55 +215,32 @@ export class MigrationValidator {
     // Check for corrupted files
     const claudePath = path.join(projectPath, '.claude');
     if (await fs.pathExists(claudePath)) {
-      try {
-        await this.checkDirectoryFiles(claudePath, '', result, check);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        result.errors.push(`Cannot validate files: ${errorMessage}`);
-        check.passed = false;
-      }
-    }
-
-    result.checks.push(check);
-  }
-
-  private async checkDirectoryFiles(
-    dir: string, 
-    relativePath: string, 
-    result: ValidationResult, 
-    check: ValidationCheck
-  ): Promise<void> {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      const relativeFilePath = path.join(relativePath, entry.name);
+      const files = await glob('**/*.md', { cwd: claudePath });
       
-      if (entry.isDirectory()) {
-        await this.checkDirectoryFiles(fullPath, relativeFilePath, result, check);
-      } else if (entry.name.endsWith('.md')) {
+      for (const file of files) {
         try {
-          const content = await fs.readFile(fullPath, 'utf-8');
+          const content = await fs.readFile(path.join(claudePath, file), 'utf-8');
           
           // Basic integrity checks
           if (content.length === 0) {
-            result.errors.push(`Empty file: ${relativeFilePath}`);
+            result.errors.push(`Empty file: ${file}`);
             check.passed = false;
           }
           
           // Check for binary data in text files
           if (content.includes('\0')) {
-            result.errors.push(`Corrupted text file: ${relativeFilePath}`);
+            result.errors.push(`Corrupted text file: ${file}`);
             check.passed = false;
           }
           
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          result.errors.push(`Cannot read file ${relativeFilePath}: ${errorMessage}`);
+          result.errors.push(`Cannot read file ${file}: ${(error instanceof Error ? error.message : String(error))}`);
           check.passed = false;
         }
       }
     }
+
+    result.checks.push(check);
   }
 
   private async validateFunctionality(projectPath: string, result: ValidationResult): Promise<void> {

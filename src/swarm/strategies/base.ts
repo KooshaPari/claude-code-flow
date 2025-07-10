@@ -1,9 +1,10 @@
+import { getErrorMessage } from '../../utils/error-handler.js';
 /**
  * Base Strategy Interface for Swarm Task Execution
  * Provides the foundation for different task execution strategies
  */
 
-import { TaskDefinition, SwarmObjective, AgentState, SwarmConfig } from '../types.js';
+import type { TaskDefinition, SwarmObjective, AgentState, SwarmConfig } from '../types.js';
 
 export interface StrategyMetrics {
   tasksCompleted: number;
@@ -13,11 +14,12 @@ export interface StrategyMetrics {
   parallelismEfficiency: number;
   cacheHitRate: number;
   predictionAccuracy: number;
-  cacheHits: number;
-  cacheMisses: number;
-  queriesExecuted: number;
-  averageResponseTime: number;
-  credibilityScores: number[];
+  // Additional metrics
+  queriesExecuted?: number;
+  averageResponseTime?: number;
+  cacheHits?: number;
+  cacheMisses?: number;
+  credibilityScores?: Record<string, number>;
 }
 
 export interface TaskPattern {
@@ -36,12 +38,19 @@ export interface DecompositionResult {
   recommendedStrategy: string;
   complexity: number;
   batchGroups: TaskBatch[];
-  timestamp?: Date;
-  ttl?: number;
-  accessCount?: number;
-  lastAccessed?: Date;
-  data?: any;
-  key?: string;
+  // Additional properties for caching and memory
+  timestamp: Date;
+  ttl: number;
+  accessCount: number;
+  lastAccessed: Date;
+  data: any;
+  // Resource requirements
+  resourceRequirements?: {
+    memory?: number;
+    cpu?: number;
+    network?: string;
+    storage?: string;
+  };
 }
 
 export interface TaskBatch {
@@ -86,12 +95,7 @@ export abstract class BaseStrategy {
       resourceUtilization: 0,
       parallelismEfficiency: 0,
       cacheHitRate: 0,
-      predictionAccuracy: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      queriesExecuted: 0,
-      averageResponseTime: 0,
-      credibilityScores: []
+      predictionAccuracy: 0
     };
   }
 

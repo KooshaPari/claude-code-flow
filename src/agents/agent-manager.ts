@@ -1,12 +1,13 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * Comprehensive agent management system
  */
 
 import { EventEmitter } from 'node:events';
 import { spawn, ChildProcess } from 'node:child_process';
-import { ILogger } from '../core/logger.js';
-import { IEventBus } from '../core/event-bus.js';
-import { 
+import type { ILogger } from '../core/logger.js';
+import type { IEventBus } from '../core/event-bus.js';
+import type { 
   AgentId, 
   AgentType, 
   AgentStatus, 
@@ -19,7 +20,7 @@ import {
   TaskId,
   TaskDefinition
 } from '../swarm/types.js';
-import { DistributedMemorySystem } from '../memory/distributed-memory.js';
+import type { DistributedMemorySystem } from '../memory/distributed-memory.js';
 import { generateId } from '../utils/helpers.js';
 
 export interface AgentManagerConfig {
@@ -192,35 +193,29 @@ export class AgentManager extends EventEmitter {
 
   private setupEventHandlers(): void {
     this.eventBus.on('agent:heartbeat', (data: unknown) => {
-      if (data && typeof data === 'object' && 'agentId' in data) {
-        this.handleHeartbeat(data as { agentId: string; timestamp: Date; metrics?: AgentMetrics });
-      }
+      const heartbeatData = data as { agentId: string; timestamp: Date; metrics?: AgentMetrics };
+      this.handleHeartbeat(heartbeatData);
     });
 
     this.eventBus.on('agent:error', (data: unknown) => {
-      if (data && typeof data === 'object' && 'agentId' in data && 'error' in data) {
-        this.handleAgentError(data as { agentId: string; error: AgentError });
-      }
+      const errorData = data as { agentId: string; error: AgentError };
+      this.handleAgentError(errorData);
     });
 
     this.eventBus.on('task:assigned', (data: unknown) => {
-      if (data && typeof data === 'object' && 'agentId' in data) {
-        const taskData = data as { agentId: string };
-        this.updateAgentWorkload(taskData.agentId, 1);
-      }
+      const taskData = data as { agentId: string };
+      this.updateAgentWorkload(taskData.agentId, 1);
     });
 
     this.eventBus.on('task:completed', (data: unknown) => {
-      if (data && typeof data === 'object' && 'agentId' in data) {
-        const taskData = data as { agentId: string; metrics?: AgentMetrics };
-        this.updateAgentWorkload(taskData.agentId, -1);
-        if (taskData.metrics) {
-          this.updateAgentMetrics(taskData.agentId, taskData.metrics);
-        }
+      const completedData = data as { agentId: string; metrics?: AgentMetrics };
+      this.updateAgentWorkload(completedData.agentId, -1);
+      if (completedData.metrics) {
+        this.updateAgentMetrics(completedData.agentId, completedData.metrics);
       }
     });
 
-    this.eventBus.on('resource:usage', (data) => {
+    this.eventBus.on('resource:usage', (data: unknown) => {
       const resourceData = data as { agentId: string; usage: { cpu: number; memory: number; disk: number } };
       this.updateResourceUsage(resourceData.agentId, resourceData.usage);
     });
@@ -282,9 +277,9 @@ export class AgentManager extends EventEmitter {
     });
 
     // Developer agent template
-    this.templates.set('developer', {
+    this.templates.set('coder', {
       name: 'Developer Agent',
-      type: 'developer',
+      type: 'coder',
       capabilities: {
         codeGeneration: true,
         codeReview: true,
@@ -341,9 +336,9 @@ export class AgentManager extends EventEmitter {
 
   private initializeSpecializedTemplates(): void {
     // Analyzer template
-    this.templates.set('analyzer', {
+    this.templates.set('analyst', {
       name: 'Analyzer Agent',
-      type: 'analyzer',
+      type: 'analyst',
       capabilities: {
         codeGeneration: false,
         codeReview: true,
@@ -462,14 +457,14 @@ export class AgentManager extends EventEmitter {
       workload: 0,
       health: 1.0,
       config: {
-        autonomyLevel: template.config.autonomyLevel ?? 0.7,
-        learningEnabled: template.config.learningEnabled ?? true,
-        adaptationEnabled: template.config.adaptationEnabled ?? true,
+        autonomyLevel: template.config.autonomyLevel ?? this.config.agentDefaults.autonomyLevel,
+        learningEnabled: template.config.learningEnabled ?? this.config.agentDefaults.learningEnabled,
+        adaptationEnabled: template.config.adaptationEnabled ?? this.config.agentDefaults.adaptationEnabled,
         maxTasksPerHour: template.config.maxTasksPerHour ?? 10,
         maxConcurrentTasks: template.config.maxConcurrentTasks ?? 3,
         timeoutThreshold: template.config.timeoutThreshold ?? 300000,
         reportingInterval: template.config.reportingInterval ?? 30000,
-        heartbeatInterval: template.config.heartbeatInterval ?? 15000,
+        heartbeatInterval: template.config.heartbeatInterval ?? 10000,
         permissions: template.config.permissions ?? [],
         trustedAgents: template.config.trustedAgents ?? [],
         expertise: template.config.expertise ?? {},
@@ -477,11 +472,11 @@ export class AgentManager extends EventEmitter {
         ...overrides.config
       },
       environment: {
-        runtime: template.environment.runtime ?? 'node',
-        version: template.environment.version ?? '1.0.0',
-        workingDirectory: template.environment.workingDirectory ?? process.cwd(),
-        tempDirectory: template.environment.tempDirectory ?? '/tmp',
-        logDirectory: template.environment.logDirectory ?? './logs',
+        runtime: template.environment.runtime ?? this.config.environmentDefaults.runtime,
+        version: template.environment.version ?? '1.40.0',
+        workingDirectory: template.environment.workingDirectory ?? this.config.environmentDefaults.workingDirectory,
+        tempDirectory: template.environment.tempDirectory ?? this.config.environmentDefaults.tempDirectory,
+        logDirectory: template.environment.logDirectory ?? this.config.environmentDefaults.logDirectory,
         apiEndpoints: template.environment.apiEndpoints ?? {},
         credentials: template.environment.credentials ?? {},
         availableTools: template.environment.availableTools ?? [],
@@ -546,8 +541,8 @@ export class AgentManager extends EventEmitter {
       this.emit('agent:started', { agent });
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       agent.status = 'error';
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.addAgentError(agentId, {
         timestamp: new Date(),
         type: 'startup_failed',
@@ -917,7 +912,7 @@ export class AgentManager extends EventEmitter {
     const now = Date.now();
     const timeout = this.config.heartbeatInterval * 3;
 
-    for (const [agentId, agent] of this.agents) {
+    for (const [agentId, agent] of Array.from(this.agents.entries())) {
       const timeSinceHeartbeat = now - agent.lastHeartbeat.getTime();
       
       if (timeSinceHeartbeat > timeout && agent.status !== 'offline' && agent.status !== 'terminated') {
@@ -948,8 +943,8 @@ export class AgentManager extends EventEmitter {
   // === UTILITY METHODS ===
 
   private async spawnAgentProcess(agent: AgentState): Promise<ChildProcess> {
-    const env: Record<string, string> = {
-      ...(process.env as Record<string, string>),
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
       AGENT_ID: agent.id.id,
       AGENT_TYPE: agent.type,
       AGENT_NAME: agent.name,
@@ -966,7 +961,7 @@ export class AgentManager extends EventEmitter {
     ];
 
     const childProcess = spawn(agent.environment.runtime, args, {
-      env: env,
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: agent.environment.workingDirectory
     });
@@ -990,8 +985,8 @@ export class AgentManager extends EventEmitter {
       }, timeout);
 
       const handler = (data: unknown) => {
-        const agentData = data as { agentId: string };
-        if (agentData.agentId === agentId) {
+        const readyData = data as { agentId: string };
+        if (readyData.agentId === agentId) {
           clearTimeout(timer);
           this.eventBus.off('agent:ready', handler);
           resolve();
@@ -1048,7 +1043,7 @@ export class AgentManager extends EventEmitter {
     this.addAgentError(agentId, {
       timestamp: new Date(),
       type: 'process_error',
-      message: error.message,
+      message: (error instanceof Error ? error.message : String(error)),
       context: { error: error.toString() },
       severity: 'critical',
       resolved: false
@@ -1173,14 +1168,14 @@ export class AgentManager extends EventEmitter {
 
   private removeAgentFromPoolsAndClusters(agentId: string): void {
     // Remove from pools
-    for (const pool of this.pools.values()) {
+    for (const pool of Array.from(this.pools.values())) {
       pool.availableAgents = pool.availableAgents.filter(a => a.id !== agentId);
       pool.busyAgents = pool.busyAgents.filter(a => a.id !== agentId);
       pool.currentSize = pool.availableAgents.length + pool.busyAgents.length;
     }
 
     // Remove from clusters
-    for (const cluster of this.clusters.values()) {
+    for (const cluster of Array.from(this.clusters.values())) {
       cluster.agents = cluster.agents.filter(a => a.id !== agentId);
     }
   }
@@ -1214,13 +1209,6 @@ export class AgentManager extends EventEmitter {
   }
 
   // === PUBLIC API ===
-
-  /**
-   * Get the memory system instance
-   */
-  getMemory(): DistributedMemorySystem {
-    return this.memory;
-  }
 
   getAgent(agentId: string): AgentState | undefined {
     return this.agents.get(agentId);

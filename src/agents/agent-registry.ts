@@ -1,10 +1,11 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * Agent Registry with Memory Integration
  * Provides persistent storage and coordination for agent management
  */
 
-import { DistributedMemorySystem } from '../memory/distributed-memory.js';
-import { AgentState, AgentId, AgentType, AgentStatus } from '../swarm/types.js';
+import type { DistributedMemorySystem } from '../memory/distributed-memory.js';
+import type { AgentState, AgentId, AgentType, AgentStatus } from '../swarm/types.js';
 import { EventEmitter } from 'node:events';
 
 export interface AgentRegistryEntry {
@@ -171,9 +172,10 @@ export class AgentRegistry extends EventEmitter {
     const memoryEntry = await this.memory.retrieve(key);
     
     if (memoryEntry && memoryEntry.value) {
-      const entry = memoryEntry.value as AgentRegistryEntry;
-      this.cache.set(agentId, entry);
-      return entry;
+      // Convert MemoryEntry to AgentRegistryEntry
+      const registryEntry: AgentRegistryEntry = memoryEntry.value as AgentRegistryEntry;
+      this.cache.set(agentId, registryEntry);
+      return registryEntry;
     }
 
     return null;
@@ -400,7 +402,7 @@ export class AgentRegistry extends EventEmitter {
   private async loadFromMemory(): Promise<void> {
     try {
       const entries = await this.memory.query({
-        type: 'state',
+        type: 'state' as const,
         namespace: this.namespace
       });
 

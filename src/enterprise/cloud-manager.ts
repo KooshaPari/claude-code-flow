@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 import { EventEmitter } from 'events';
 import { writeFile, readFile, mkdir, readdir } from 'fs/promises';
 import { join } from 'path';
@@ -396,7 +397,7 @@ export class CloudManager extends EventEmitter {
   ) {
     super();
     this.cloudPath = cloudPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'CloudManager' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
     this.config = config || ConfigManager.getInstance();
   }
 
@@ -1098,13 +1099,7 @@ export class CloudManager extends EventEmitter {
           name: providerData.name,
           type: providerData.type,
           credentials: {},
-          configuration: {
-            defaultRegion: providerData.configuration.defaultRegion,
-            availableRegions: providerData.configuration.availableRegions,
-            services: providerData.configuration.services,
-            endpoints: providerData.configuration.endpoints as unknown as Record<string, string>,
-            features: providerData.configuration.features
-          },
+          configuration: providerData.configuration,
           status: 'inactive',
           quotas: {
             computeInstances: 20,

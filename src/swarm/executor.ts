@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * Advanced Task Executor with timeout handling and process management
  */
@@ -76,7 +77,7 @@ export class TaskExecutor extends EventEmitter {
     
     this.config = this.mergeWithDefaults(config);
     this.logger = new Logger(
-      { level: (this.config.logLevel as 'debug' | 'info' | 'warn' | 'error') || 'info', format: 'text', destination: 'console' },
+      { level: this.config.logLevel || 'info', format: 'text', destination: 'console' },
       { component: 'TaskExecutor' }
     );
     this.resourceMonitor = new ResourceMonitor();
@@ -157,8 +158,8 @@ export class TaskExecutor extends EventEmitter {
     } catch (error) {
       this.logger.error('Task execution failed', {
         sessionId,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        error: (error instanceof Error ? error.message : String(error)),
+        stack: error.stack
       });
 
       await this.cleanupExecution(session);
@@ -210,7 +211,7 @@ export class TaskExecutor extends EventEmitter {
     } catch (error) {
       this.logger.error('Claude task execution failed', {
         sessionId,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
       throw error;
     }
@@ -228,28 +229,6 @@ export class TaskExecutor extends EventEmitter {
       successRate: this.processPool.getSuccessRate(),
       resourceUtilization: this.resourceMonitor.getUtilization(),
       errorRate: this.processPool.getErrorRate()
-    };
-  }
-
-  convertToTaskResult(executionResult: ExecutionResult): TaskResult {
-    return {
-      output: executionResult.output,
-      artifacts: executionResult.artifacts,
-      metadata: executionResult.metadata,
-      quality: executionResult.success ? 0.8 : 0.1,
-      completeness: executionResult.success ? 1.0 : 0.0,
-      accuracy: executionResult.success ? 0.9 : 0.1,
-      executionTime: executionResult.duration,
-      resourcesUsed: {
-        cpu: executionResult.resourcesUsed.cpuTime,
-        memory: executionResult.resourcesUsed.maxMemory,
-        disk: executionResult.resourcesUsed.diskIO,
-        network: executionResult.resourcesUsed.networkIO
-      },
-      validated: executionResult.success,
-      validationResults: executionResult.success ? null : executionResult.error,
-      recommendations: executionResult.success ? [] : ['Review and retry execution'],
-      nextSteps: executionResult.success ? [] : ['Check error logs and fix issues']
     };
   }
 
@@ -445,7 +424,7 @@ export class TaskExecutor extends EventEmitter {
           clearTimeout(timeoutHandle);
           this.logger.error('Claude process error', {
             sessionId,
-            error: error instanceof Error ? error.message : String(error)
+            error: (error instanceof Error ? error.message : String(error))
           });
           reject(error);
         });
@@ -674,7 +653,7 @@ export class TaskExecutor extends EventEmitter {
     } catch (error) {
       this.logger.warn('Error during execution cleanup', {
         sessionId: session.id,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
     }
   }
@@ -698,7 +677,7 @@ export class TaskExecutor extends EventEmitter {
     } catch (error) {
       this.logger.warn('Error collecting artifacts', {
         workingDir: context.workingDirectory,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
     }
 

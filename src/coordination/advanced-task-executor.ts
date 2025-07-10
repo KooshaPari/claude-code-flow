@@ -1,12 +1,13 @@
+import { getErrorMessage, getErrorStack } from '../utils/type-guards.js';
 /**
  * Advanced task executor with timeout handling, retry logic, and resource management
  */
 
 import { EventEmitter } from 'node:events';
 import { spawn, ChildProcess } from 'node:child_process';
-import { TaskDefinition, TaskResult, TaskStatus, AgentState, TaskError } from '../swarm/types.js';
-import { ILogger } from '../core/logger.js';
-import { IEventBus } from '../core/event-bus.js';
+import type { TaskDefinition, TaskResult, TaskStatus, AgentState, TaskError } from '../swarm/types.js';
+import type { ILogger } from '../core/logger.js';
+import type { IEventBus } from '../core/event-bus.js';
 import { CircuitBreaker, CircuitBreakerManager } from './circuit-breaker.js';
 import { generateId } from '../utils/helpers.js';
 
@@ -214,15 +215,15 @@ export class AdvancedTaskExecutor extends EventEmitter {
           taskId: task.id.id,
           attempt: retryCount,
           maxRetries,
-          error: error instanceof Error ? error.message : String(error)
+          error: getErrorMessage(error)
         });
 
         // Check if we should retry
         if (retryCount > maxRetries) {
           const taskError: TaskError = {
             type: 'execution_failed',
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
+            message: getErrorMessage(error),
+            stack: getErrorStack(error),
             context: {
               retryCount,
               maxRetries,
@@ -374,7 +375,7 @@ export class AdvancedTaskExecutor extends EventEmitter {
       });
 
       childProcess.on('error', (error) => {
-        reject(new Error(`Process error: ${error.message}`));
+        reject(new Error(`Process error: ${getErrorMessage(error)}`));
       });
     });
 
@@ -394,12 +395,7 @@ export class AdvancedTaskExecutor extends EventEmitter {
           completeness: output.completeness || 1.0,
           accuracy: output.accuracy || 0.9,
           executionTime,
-          resourcesUsed: {
-            memory: context.resources.memory,
-            cpu: context.resources.cpu,
-            disk: context.resources.disk,
-            network: context.resources.network
-          },
+          resourcesUsed: context.resources,
           validated: false
         };
       } catch (error) {
@@ -411,12 +407,7 @@ export class AdvancedTaskExecutor extends EventEmitter {
           completeness: 1.0,
           accuracy: 0.7,
           executionTime,
-          resourcesUsed: {
-            memory: context.resources.memory,
-            cpu: context.resources.cpu,
-            disk: context.resources.disk,
-            network: context.resources.network
-          },
+          resourcesUsed: context.resources,
           validated: false
         };
       }
@@ -500,7 +491,7 @@ export class AdvancedTaskExecutor extends EventEmitter {
     for (const [taskId, context] of this.runningTasks) {
       if (context.process) {
         try {
-          const usage = await this.getProcessResourceUsage(context.process.pid!);
+          const usage = await this.getProcessResourceUsage(context.process.pid);
           context.resources = {
             ...usage,
             lastUpdated: new Date()
@@ -511,14 +502,17 @@ export class AdvancedTaskExecutor extends EventEmitter {
         } catch (error) {
           this.logger.warn('Failed to get resource usage', {
             taskId,
-            error: error instanceof Error ? error.message : String(error)
+            error: getErrorMessage(error)
           });
         }
       }
     }
   }
 
-  private async getProcessResourceUsage(pid: number): Promise<ResourceUsage> {
+  private async getProcessResourceUsage(pid: number | undefined): Promise<ResourceUsage> {
+    if (!pid) {
+      throw new Error('Process ID is undefined');
+    }
     // In a real implementation, this would use system APIs
     // For now, return mock data
     return {
@@ -617,7 +611,7 @@ export class AdvancedTaskExecutor extends EventEmitter {
     queuedTasks: number;
     maxConcurrentTasks: number;
     totalCapacity: number;
-    resourceLimits: TaskExecutorConfig['resourceLimits'];
+    resourceLimits: typeof this.config.resourceLimits;
     circuitBreakers: Record<string, any>;
   } {
     return {

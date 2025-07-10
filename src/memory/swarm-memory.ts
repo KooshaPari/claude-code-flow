@@ -1,7 +1,8 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 import { EventEmitter } from 'node:events';
 import { Logger } from '../core/logger.js';
-import { EventBus } from '../core/event-bus.js';
 import { MemoryManager } from './manager.js';
+import { EventBus } from '../core/event-bus.js';
 import { generateId } from '../utils/helpers.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -60,7 +61,6 @@ export interface SwarmMemoryConfig {
 
 export class SwarmMemoryManager extends EventEmitter {
   private logger: Logger;
-  private eventBus: EventBus;
   private config: SwarmMemoryConfig;
   private baseMemory: MemoryManager;
   private entries: Map<string, SwarmMemoryEntry>;
@@ -71,11 +71,7 @@ export class SwarmMemoryManager extends EventEmitter {
 
   constructor(config: Partial<SwarmMemoryConfig> = {}) {
     super();
-    this.logger = new Logger(
-      { level: 'info', format: 'json', destination: 'console' },
-      { component: 'SwarmMemoryManager' }
-    );
-    this.eventBus = EventBus.getInstance();
+    this.logger = new Logger('SwarmMemoryManager');
     this.config = {
       namespace: 'swarm',
       enableDistribution: true,
@@ -93,13 +89,15 @@ export class SwarmMemoryManager extends EventEmitter {
     this.knowledgeBases = new Map();
     this.agentMemories = new Map();
 
+    const eventBus = EventBus.getInstance();
     this.baseMemory = new MemoryManager({
       backend: 'sqlite',
-      cacheSizeMB: 100,
-      syncInterval: 30000,
-      conflictResolution: 'last-write',
-      retentionDays: 30
-    }, this.eventBus, this.logger);
+      namespace: this.config.namespace,
+      cacheSizeMB: 50,
+      syncOnExit: true,
+      maxEntries: this.config.maxEntries,
+      ttlMinutes: 60
+    }, eventBus, this.logger);
   }
 
   async initialize(): Promise<void> {
@@ -174,7 +172,7 @@ export class SwarmMemoryManager extends EventEmitter {
     this.agentMemories.get(agentId)!.add(entryId);
 
     // Store in base memory for persistence
-    await (this.baseMemory as any).remember({
+    await this.baseMemory.remember({
       namespace: this.config.namespace,
       key: `entry:${entryId}`,
       content: JSON.stringify(entry),
@@ -272,12 +270,10 @@ export class SwarmMemoryManager extends EventEmitter {
       id: generateId('mem'),
       metadata: {
         ...entry.metadata,
-        ...(({
-          originalId: entryId,
-          sharedFrom: entry.agentId,
-          sharedTo: targetAgentId,
-          sharedAt: new Date()
-        }) as any)
+        originalId: entryId,
+        sharedFrom: entry.agentId,
+        sharedTo: targetAgentId,
+        sharedAt: new Date()
       }
     };
 
@@ -606,5 +602,33 @@ export class SwarmMemoryManager extends EventEmitter {
     }
 
     this.emit('memory:cleared', { agentId });
+  }
+
+  // Compatibility methods for hive.ts
+  async store(key: string, value: any): Promise<void> {
+    // Extract namespace and actual key from the path
+    const parts = key.split('/');
+    const type = parts[0] as SwarmMemoryEntry['type'] || 'state';
+    const agentId = parts[1] || 'system';
+    
+    await this.remember(agentId, type, value, {
+      tags: [parts[0], parts[1]].filter(Boolean),
+      shareLevel: 'team'
+    });
+  }
+
+  async search(pattern: string, limit: number = 10): Promise<any[]> {
+    // Simple pattern matching on stored keys/content
+    const results: any[] = [];
+    
+    for (const entry of this.entries.values()) {
+      const entryString = JSON.stringify(entry);
+      if (entryString.includes(pattern.replace('*', ''))) {
+        results.push(entry.content);
+        if (results.length >= limit) break;
+      }
+    }
+    
+    return results;
   }
 }

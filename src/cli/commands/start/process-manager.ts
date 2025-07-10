@@ -1,9 +1,10 @@
+import { getErrorMessage } from '../../../utils/error-handler.js';
 /**
  * Process Manager - Handles lifecycle of system processes
  */
 
 import { EventEmitter } from './event-emitter.js';
-import { colors } from '../../../utils/colors.js';
+import chalk from 'chalk';
 import { 
   ProcessInfo, 
   ProcessType, 
@@ -19,7 +20,6 @@ import { MCPServer } from '../../../mcp/server.js';
 import { eventBus } from '../../../core/event-bus.js';
 import { logger } from '../../../core/logger.js';
 import { configManager } from '../../../core/config.js';
-import { processInfo } from '../../../utils/runtime.js';
 
 export class ProcessManager extends EventEmitter {
   private processes: Map<string, ProcessInfo> = new Map();
@@ -107,7 +107,7 @@ export class ProcessManager extends EventEmitter {
       switch (process.type) {
         case ProcessType.EVENT_BUS:
           // Event bus is already initialized globally
-          process.pid = processInfo.pid;
+          process.pid = Deno.pid;
           break;
 
         case ProcessType.MEMORY_MANAGER:
@@ -257,7 +257,7 @@ export class ProcessManager extends EventEmitter {
       try {
         await this.startProcess(processId);
       } catch (error) {
-        console.error(colors.red(`Failed to start ${processId}:`), (error as Error).message);
+        console.error(chalk.red(`Failed to start ${processId}:`), (error as Error).message);
         // Continue with other processes
       }
     }
@@ -280,7 +280,7 @@ export class ProcessManager extends EventEmitter {
         try {
           await this.stopProcess(processId);
         } catch (error) {
-          console.error(colors.red(`Failed to stop ${processId}:`), (error as Error).message);
+          console.error(chalk.red(`Failed to stop ${processId}:`), (error as Error).message);
         }
       }
     }

@@ -1,11 +1,8 @@
-/**
- * Comprehensive Swarm Coordinator - Main orchestration engine
- */
-
-import { EventEmitter } from 'node:events';
+import { getErrorMessage } from '../utils/error-handler.js';
+import { EventEmitter } from 'events';
+import { promises as fs } from 'node:fs';
 import { Logger } from '../core/logger.js';
 import { generateId } from '../utils/helpers.js';
-import { fs, env, processInfo } from '../utils/runtime.js';
 import {
   SwarmId, AgentId, TaskId, AgentState, TaskDefinition, SwarmObjective,
   SwarmConfig, SwarmStatus, SwarmProgress, SwarmResults, SwarmMetrics,
@@ -14,6 +11,7 @@ import {
   SWARM_CONSTANTS
 } from './types.js';
 import { AutoStrategy } from './strategies/auto.js';
+import { getClaudeFlowRoot, getClaudeFlowBin } from '../utils/paths.js';
 
 export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter {
   private logger: Logger;
@@ -182,7 +180,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
     // Pause all agents
     for (const agent of this.agents.values()) {
       if (agent.status === 'busy') {
-        await this.pauseAgent(agent.id.id);
+        await this.pauseAgent(agent.id);
       }
     }
     
@@ -208,7 +206,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
     // Resume all paused agents
     for (const agent of this.agents.values()) {
       if (agent.status === 'paused') {
-        await this.resumeAgent(agent.id.id);
+        await this.resumeAgent(agent.id);
       }
     }
     
@@ -256,13 +254,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
         requiredApprovals: [],
         allowedFailures: Math.floor(this.config.maxAgents * 0.1),
         recoveryTime: 5 * 60 * 1000, // 5 minutes
-        milestones: [],
-        resourceLimits: {
-          maxConcurrentTasks: this.config.maxAgents,
-          maxMemoryUsage: 1000000, // 1MB
-          maxExecutionTime: 3600000, // 1 hour
-          maxCpuUsage: 80
-        }
+        milestones: []
       },
       tasks: [],
       dependencies: [],
@@ -515,8 +507,8 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
       agent.errorHistory.push({
         timestamp: new Date(),
         type: 'startup_error',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+        message: (error instanceof Error ? error.message : String(error)),
+        stack: error.stack,
         context: { agentId },
         severity: 'high',
         resolved: false
@@ -669,7 +661,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
 
     // Select agent if not specified
     if (!agentId) {
-      agentId = await this.selectAgentForTask(task) || undefined;
+      agentId = await this.selectAgentForTask(task);
       if (!agentId) {
         throw new Error('No suitable agent available for task');
       }
@@ -857,13 +849,13 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
       throw new Error('Task not assigned to any agent');
     }
 
-    this.logger.warn('Task failed', { taskId, agentId: agent.id.id, error: error instanceof Error ? error.message : String(error) });
+    this.logger.warn('Task failed', { taskId, agentId: agent.id.id, error: (error instanceof Error ? error.message : String(error)) });
 
     task.error = {
       type: error.constructor.name,
-      message: error instanceof Error ? error.message : String(error),
-      code: (error as any).code,
-      stack: error instanceof Error ? error.stack : undefined,
+      message: (error instanceof Error ? error.message : String(error)),
+      code: error.code,
+      stack: error.stack,
       context: { taskId, agentId: agent.id.id },
       recoverable: this.isRecoverableError(error),
       retryable: this.isRetryableError(error)
@@ -887,7 +879,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
     agent.errorHistory.push({
       timestamp: new Date(),
       type: 'task_failure',
-      message: error.message,
+      message: (error instanceof Error ? error.message : String(error)),
       stack: error.stack,
       context: { taskId },
       severity: 'medium',
@@ -907,7 +899,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
         timestamp: new Date(),
         from: 'running',
         to: 'retrying',
-        reason: `Task failed, will retry: ${error instanceof Error ? error.message : String(error)}`,
+        reason: `Task failed, will retry: ${(error instanceof Error ? error.message : String(error))}`,
         triggeredBy: agent.id
       });
 
@@ -938,7 +930,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
         timestamp: new Date(),
         from: 'running',
         to: 'failed',
-        reason: `Task failed permanently: ${error instanceof Error ? error.message : String(error)}`,
+        reason: `Task failed permanently: ${(error instanceof Error ? error.message : String(error))}`,
         triggeredBy: agent.id
       });
 
@@ -1368,15 +1360,10 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
     return endTime.getTime() - this.startTime.getTime();
   }
 
-  getSwarmStatus(): { status: SwarmStatus; objectives: number; tasks: { completed: number; failed: number; total: number; inProgress: number; pending: number }; agents: { total: number; active: number } } {
+  getSwarmStatus(): { status: SwarmStatus; objectives: number; tasks: { completed: number; failed: number; total: number }; agents: { total: number } } {
     const tasks = Array.from(this.tasks.values());
     const completedTasks = tasks.filter(t => t.status === 'completed').length;
     const failedTasks = tasks.filter(t => t.status === 'failed').length;
-    const inProgressTasks = tasks.filter(t => t.status === 'running').length;
-    const pendingTasks = tasks.filter(t => t.status === 'queued').length;
-    
-    const agents = Array.from(this.agents.values());
-    const activeAgents = agents.filter(a => a.status === 'busy').length;
     
     return {
       status: this.status,
@@ -1384,13 +1371,10 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
       tasks: {
         completed: completedTasks,
         failed: failedTasks,
-        total: tasks.length,
-        inProgress: inProgressTasks,
-        pending: pendingTasks
+        total: tasks.length
       },
       agents: {
-        total: this.agents.size,
-        active: activeAgents
+        total: this.agents.size
       }
     };
   }
@@ -1478,23 +1462,23 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
 
   private determineRequiredAgentTypes(strategy: SwarmStrategy): AgentType[] {
     switch (strategy) {
-      case 'research': return ['researcher', 'analyzer'];
-      case 'development': return ['developer', 'tester', 'reviewer'];
-      case 'analysis': return ['analyzer', 'researcher'];
-      case 'testing': return ['tester', 'developer'];
-      case 'optimization': return ['analyzer', 'developer'];
-      case 'maintenance': return ['developer', 'monitor'];
-      default: return ['coordinator', 'developer', 'analyzer'];
+      case 'research': return ['researcher', 'analyst'];
+      case 'development': return ['coder', 'tester', 'reviewer'];
+      case 'analysis': return ['analyst', 'researcher'];
+      case 'testing': return ['tester', 'coder'];
+      case 'optimization': return ['analyst', 'coder'];
+      case 'maintenance': return ['coder', 'monitor'];
+      default: return ['coordinator', 'coder', 'analyst'];
     }
   }
 
   private getAgentTypeInstructions(agentType: string): string {
     switch (agentType) {
-      case 'developer':
+      case 'coder':
         return '- Focus on implementation, code quality, and best practices\n- Create clean, maintainable code\n- Consider architecture and design patterns';
       case 'tester':
         return '- Focus on testing, edge cases, and quality assurance\n- Create comprehensive test suites\n- Identify potential bugs and issues';
-      case 'analyzer':
+      case 'analyst':
         return '- Focus on analysis, research, and understanding\n- Break down complex problems\n- Provide insights and recommendations';
       case 'researcher':
         return '- Focus on gathering information and best practices\n- Research existing solutions and patterns\n- Document findings and recommendations';
@@ -1511,11 +1495,11 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
 
   private getAgentCapabilities(agentType: string): string[] {
     switch (agentType) {
-      case 'developer':
+      case 'coder':
         return ['code-generation', 'file-system', 'debugging'];
       case 'tester':
         return ['testing', 'code-generation', 'analysis'];
-      case 'analyzer':
+      case 'analyst':
         return ['analysis', 'documentation', 'research'];
       case 'researcher':
         return ['research', 'documentation', 'analysis'];
@@ -1542,14 +1526,14 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
     // Extract target directory from objective
     const targetDirMatch = objective.description.match(/(?:in|to|at)\s+([^\s]+\/[^\s]+)|([^\s]+\/[^\s]+)$/);
     const targetDir = targetDirMatch ? targetDirMatch[1] || targetDirMatch[2] : null;
-    const targetPath = targetDir ? (targetDir.startsWith('/') ? targetDir : `/workspaces/claude-code-flow/${targetDir}`) : null;
+    const targetPath = targetDir ? (targetDir.startsWith('/') ? targetDir : `${getClaudeFlowRoot()}/${targetDir}`) : null;
     
     // Check if objective requests "each agent" or "each agent type" for parallel execution
     const eachAgentPattern = /\beach\s+agent(?:\s+type)?\b/i;
     const requestsParallelAgents = eachAgentPattern.test(objective.description);
     
     // Create tasks with specific prompts for Claude
-    if (requestsParallelAgents && this.config.mode === 'distributed') {
+    if (requestsParallelAgents && this.config.mode === 'parallel') {
       // Create parallel tasks for each agent type
       const agentTypes = this.determineRequiredAgentTypes(objective.strategy);
       this.logger.info('Creating parallel tasks for each agent type', { 
@@ -1673,7 +1657,7 @@ Make sure the documentation is clear, complete, and helps users understand and u
       tasks.push(task4);
     } else {
       // For other strategies, create a comprehensive single task
-      tasks.push(this.createTaskForObjective('execute-objective', 'coordination', {
+      tasks.push(this.createTaskForObjective('execute-objective', 'generic', {
         title: 'Execute Objective',
         description: objective.description,
         instructions: `Please complete the following request:
@@ -2072,7 +2056,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
   private getDefaultPermissions(type: AgentType): string[] {
     switch (type) {
       case 'coordinator': return ['read', 'write', 'execute', 'admin'];
-      case 'developer': return ['read', 'write', 'execute'];
+      case 'coder': return ['read', 'write', 'execute'];
       case 'tester': return ['read', 'execute'];
       case 'reviewer': return ['read', 'write'];
       default: return ['read'];
@@ -2090,7 +2074,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
         agent.capabilities.research = true;
         agent.capabilities.analysis = true;
         break;
-      case 'developer':
+      case 'coder':
         agent.capabilities.codeGeneration = true;
         agent.capabilities.codeReview = true;
         agent.capabilities.testing = true;
@@ -2102,7 +2086,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
         agent.capabilities.webSearch = true;
         agent.capabilities.documentation = true;
         break;
-      case 'analyzer':
+      case 'analyst':
         agent.capabilities.analysis = true;
         agent.capabilities.research = true;
         agent.capabilities.documentation = true;
@@ -2179,16 +2163,16 @@ Ensure your implementation is complete, well-structured, and follows best practi
     
     try {
       // Use Claude Flow executor for full SPARC system in non-interactive mode
-      const { ClaudeFlowExecutor } = await import('./claude-flow-executor.js');
+      const { ClaudeFlowExecutor } = await import('./claude-flow-executor.ts');
       const executor = new ClaudeFlowExecutor({ 
         logger: this.logger,
-        claudeFlowPath: '/workspaces/claude-code-flow/bin/claude-flow',
+        claudeFlowPath: getClaudeFlowBin(),
         enableSparc: true,
-        verbose: this.config.monitoring?.loggingEnabled === true,
+        verbose: this.config.logging?.level === 'debug',
         timeoutMinutes: this.config.taskTimeoutMinutes
       });
       
-      const result = await executor.executeTask(task, agent, targetDir || undefined);
+      const result = await executor.executeTask(task, agent, targetDir);
       
       this.logger.info('Task execution completed', { 
         taskId: task.id.id,
@@ -2201,7 +2185,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
     } catch (error) {
       this.logger.error('Task execution failed', { 
         taskId: task.id.id,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
       throw error;
     }
@@ -2285,7 +2269,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
       targetDir = targetDir.replace(/\s+.*$/, '');
       // Resolve relative to current directory
       if (!targetDir.startsWith('/')) {
-        targetDir = `/workspaces/claude-code-flow/${targetDir}`;
+        targetDir = `${getClaudeFlowRoot()}/${targetDir}`;
       }
     }
     
@@ -2315,7 +2299,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
     // Set working directory if specified
     if (targetDir) {
       // Ensure directory exists
-      await fs.mkdir(targetDir, { recursive: true });
+      await Deno.mkdir(targetDir, { recursive: true });
       
       // Add directory context to prompt
       const enhancedPrompt = `${prompt}\n\n## Important: Working Directory\nPlease ensure all files are created in: ${targetDir}`;
@@ -2324,39 +2308,34 @@ Ensure your implementation is complete, well-structured, and follows best practi
     
     try {
       // Check if claude command exists
-      const { spawn } = await import('child_process');
-      const checkCommand = spawn('which', ['claude'], {
-        stdio: ['pipe', 'pipe', 'pipe']
+      const checkCommand = new Deno.Command('which', {
+        args: ['claude'],
+        stdout: 'piped',
+        stderr: 'piped',
       });
-      const checkResult = await new Promise<{ success: boolean; output: string; error: string }>((resolve, reject) => {
-        let output = '';
-        let error = '';
-        checkCommand.stdout?.on('data', (data) => output += data.toString());
-        checkCommand.stderr?.on('data', (data) => error += data.toString());
-        checkCommand.on('close', (code) => {
-          resolve({ success: code === 0, output, error });
-        });
-        checkCommand.on('error', reject);
-      });
+      const checkResult = await checkCommand.output();
       if (!checkResult.success) {
         throw new Error('Claude CLI not found. Please ensure claude is installed and in PATH.');
       }
       
       // Execute Claude with the prompt
-      const command = spawn("claude", claudeArgs, {
-        cwd: targetDir || processInfo.cwd(),
+      const command = new Deno.Command("claude", {
+        args: claudeArgs,
+        cwd: targetDir || process.cwd(),
         env: {
-          ...env.toObject(),
+          ...Deno.env.toObject(),
           CLAUDE_INSTANCE_ID: instanceId,
           CLAUDE_SWARM_MODE: "true",
           CLAUDE_SWARM_ID: this.swarmId.id,
           CLAUDE_TASK_ID: task.id.id,
           CLAUDE_AGENT_ID: agent.id.id,
-          CLAUDE_WORKING_DIRECTORY: targetDir || processInfo.cwd(),
+          CLAUDE_WORKING_DIRECTORY: targetDir || process.cwd(),
           CLAUDE_FLOW_MEMORY_ENABLED: "true",
           CLAUDE_FLOW_MEMORY_NAMESPACE: `swarm-${this.swarmId.id}`,
         },
-        stdio: ["pipe", "pipe", "pipe"]
+        stdin: "null",
+        stdout: "piped",
+        stderr: "piped",
       });
       
       this.logger.info('Spawning Claude agent for task', { 
@@ -2366,44 +2345,35 @@ Ensure your implementation is complete, well-structured, and follows best practi
         targetDir 
       });
       
-      const result = await new Promise((resolve, reject) => {
-        let stdout = '';
-        let stderr = '';
-        
-        command.stdout?.on('data', (data) => stdout += data.toString());
-        command.stderr?.on('data', (data) => stderr += data.toString());
-        
-        command.on('close', (code) => {
-          if (code === 0) {
-            this.logger.info('Claude agent completed task successfully', {
-              taskId: task.id.id,
-              outputLength: stdout.length
-            });
-            
-            resolve({
-              success: true,
-              output: stdout,
-              instanceId,
-              targetDir
-            });
-          } else {
-            this.logger.error(`Claude agent failed with code ${code}`, { 
-              taskId: task.id.id,
-              error: stderr 
-            });
-            reject(new Error(`Claude execution failed: ${stderr}`));
-          }
+      const child = command.spawn();
+      const { code, stdout, stderr } = await child.output();
+      
+      if (code === 0) {
+        const output = new TextDecoder().decode(stdout);
+        this.logger.info('Claude agent completed task successfully', {
+          taskId: task.id.id,
+          outputLength: output.length
         });
         
-        command.on('error', reject);
-      });
-      
-      return result;
+        return {
+          success: true,
+          output,
+          instanceId,
+          targetDir
+        };
+      } else {
+        const errorOutput = new TextDecoder().decode(stderr);
+        this.logger.error(`Claude agent failed with code ${code}`, { 
+          taskId: task.id.id,
+          error: errorOutput 
+        });
+        throw new Error(`Claude execution failed: ${errorOutput}`);
+      }
       
     } catch (error) {
       this.logger.error('Failed to execute Claude agent', { 
         taskId: task.id.id,
-        error: error instanceof Error ? error.message : String(error) 
+        error: (error instanceof Error ? error.message : String(error)) 
       });
       throw error;
     }
@@ -2492,7 +2462,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
       // Clean up the target directory (remove trailing words if needed)
       targetDir = targetDir.replace(/\s+.*$/, '');
       // Use absolute path or resolve relative to current directory
-      workDir = targetDir.startsWith('/') ? targetDir : `/workspaces/claude-code-flow/${targetDir}`;
+      workDir = targetDir.startsWith('/') ? targetDir : `${getClaudeFlowRoot()}/${targetDir}`;
       
       this.logger.debug('Extracted target directory', { 
         original: task.description,
@@ -2503,7 +2473,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
     
     try {
       // Ensure work directory exists
-      await fs.mkdir(workDir, { recursive: true });
+      await Deno.mkdir(workDir, { recursive: true });
       
       switch (task.type) {
         case 'coding':
@@ -2522,8 +2492,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
           return await this.executeGenericTask(task, workDir, agent);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Task execution failed: ${errorMessage}`);
+      throw new Error(`Task execution failed: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
   
@@ -2547,7 +2516,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
       // Create a REST API application
       const projectName = 'rest-api';
       const projectDir = `${workDir}/${projectName}`;
-      await fs.mkdir(projectDir, { recursive: true });
+      await Deno.mkdir(projectDir, { recursive: true });
       
       // Create main API file
       const apiCode = `const express = require('express');
@@ -2627,7 +2596,7 @@ app.listen(port, () => {
 module.exports = app;
 `;
       
-      await fs.writeTextFile(`${projectDir}/server.js`, apiCode);
+      await fs.writeFile(`${projectDir}/server.js`, apiCode);
       
       // Create package.json
       const packageJson = {
@@ -2659,7 +2628,7 @@ module.exports = app;
         }
       };
       
-      await fs.writeTextFile(
+      await fs.writeFile(
         `${projectDir}/package.json`, 
         JSON.stringify(packageJson, null, 2)
       );
@@ -2709,7 +2678,7 @@ ${task.description}
 Created by Claude Flow Swarm
 `;
       
-      await fs.writeTextFile(`${projectDir}/README.md`, readme);
+      await fs.writeFile(`${projectDir}/README.md`, readme);
       
       // Create .gitignore
       const gitignore = `node_modules/
@@ -2719,7 +2688,7 @@ Created by Claude Flow Swarm
 coverage/
 `;
       
-      await fs.writeTextFile(`${projectDir}/.gitignore`, gitignore);
+      await fs.writeFile(`${projectDir}/.gitignore`, gitignore);
       
       return {
         success: true,
@@ -2737,7 +2706,7 @@ coverage/
     } else if (isHelloWorld) {
       // Create a simple hello world application
       const projectDir = `${workDir}/hello-world`;
-      await fs.mkdir(projectDir, { recursive: true });
+      await Deno.mkdir(projectDir, { recursive: true });
       
       // Create main application file
       const mainCode = `#!/usr/bin/env node
@@ -2757,7 +2726,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 `;
       
-      await fs.writeTextFile(`${projectDir}/index.js`, mainCode);
+      await fs.writeFile(`${projectDir}/index.js`, mainCode);
       
       // Create package.json
       const packageJson = {
@@ -2774,7 +2743,7 @@ if (typeof module !== 'undefined' && module.exports) {
         license: "MIT"
       };
       
-      await fs.writeTextFile(
+      await fs.writeFile(
         `${projectDir}/package.json`, 
         JSON.stringify(packageJson, null, 2)
       );
@@ -2799,7 +2768,7 @@ npm start
 ${task.description}
 `;
       
-      await fs.writeTextFile(`${projectDir}/README.md`, readme);
+      await fs.writeFile(`${projectDir}/README.md`, readme);
       
       return {
         success: true,
@@ -2818,7 +2787,7 @@ ${task.description}
     
     // For other code generation tasks, create a basic structure
     const projectDir = `${workDir}/generated-code`;
-    await fs.mkdir(projectDir, { recursive: true });
+    await Deno.mkdir(projectDir, { recursive: true });
     
     const code = `// Generated code for: ${task.name}
 // ${task.description}
@@ -2831,7 +2800,7 @@ function main() {
 main();
 `;
     
-    await fs.writeTextFile(`${projectDir}/main.js`, code);
+    await fs.writeFile(`${projectDir}/main.js`, code);
     
     return {
       success: true,
@@ -2847,7 +2816,7 @@ main();
     this.logger.info('Executing analysis task', { taskId: task.id.id });
     
     const analysisDir = `${workDir}/analysis`;
-    await fs.mkdir(analysisDir, { recursive: true });
+    await Deno.mkdir(analysisDir, { recursive: true });
     
     const analysis = {
       task: task.name,
@@ -2865,7 +2834,7 @@ main();
       ]
     };
     
-    await fs.writeTextFile(
+    await fs.writeFile(
       `${analysisDir}/analysis-report.json`,
       JSON.stringify(analysis, null, 2)
     );
@@ -2883,7 +2852,7 @@ main();
     this.logger.info('Executing documentation task', { taskId: task.id.id });
     
     const docsDir = `${workDir}/docs`;
-    await fs.mkdir(docsDir, { recursive: true });
+    await Deno.mkdir(docsDir, { recursive: true });
     
     const documentation = `# ${task.name}
 
@@ -2905,7 +2874,7 @@ ${task.instructions}
 - Further details would be added based on actual implementation
 `;
     
-    await fs.writeTextFile(`${docsDir}/documentation.md`, documentation);
+    await fs.writeFile(`${docsDir}/documentation.md`, documentation);
     
     return {
       success: true,
@@ -2924,7 +2893,7 @@ ${task.instructions}
     this.logger.info('Executing testing task', { taskId: task.id.id });
     
     const testDir = `${workDir}/tests`;
-    await fs.mkdir(testDir, { recursive: true });
+    await Deno.mkdir(testDir, { recursive: true });
     
     const testCode = `// Test suite for: ${task.name}
 // ${task.description}
@@ -2945,7 +2914,7 @@ describe('${task.name}', () => {
 console.log('Tests completed for: ${task.name}');
 `;
     
-    await fs.writeTextFile(`${testDir}/test.js`, testCode);
+    await fs.writeFile(`${testDir}/test.js`, testCode);
     
     return {
       success: true,
@@ -2966,7 +2935,7 @@ console.log('Tests completed for: ${task.name}');
     this.logger.info('Executing generic task', { taskId: task.id.id });
     
     const outputDir = `${workDir}/output`;
-    await fs.mkdir(outputDir, { recursive: true });
+    await Deno.mkdir(outputDir, { recursive: true });
     
     const output = {
       task: task.name,
@@ -2977,7 +2946,7 @@ console.log('Tests completed for: ${task.name}');
       result: 'Task executed successfully'
     };
     
-    await fs.writeTextFile(
+    await fs.writeFile(
       `${outputDir}/result.json`,
       JSON.stringify(output, null, 2)
     );
@@ -3074,106 +3043,5 @@ console.log('Tests completed for: ${task.name}');
       agent.health = 0;
       this.logger.error('Agent error', { agentId, error });
     }
-  }
-
-  private async createGradioApp(task: TaskDefinition, workDir: string): Promise<any> {
-    // Create a Gradio application
-    const projectName = 'gradio-app';
-    const projectDir = `${workDir}/${projectName}`;
-    await fs.mkdir(projectDir, { recursive: true });
-    
-    // Create main Gradio app file
-    const appCode = `import gradio as gr
-
-def greet(name):
-    return f"Hello {name}!"
-
-# Create Gradio interface
-demo = gr.Interface(
-    fn=greet,
-    inputs=gr.Textbox(placeholder="Enter your name"),
-    outputs=gr.Textbox(label="Greeting")
-)
-
-if __name__ == "__main__":
-    demo.launch()
-`;
-    
-    await fs.writeTextFile(`${projectDir}/app.py`, appCode);
-    
-    // Create requirements.txt
-    const requirements = `gradio
-`;
-    await fs.writeTextFile(`${projectDir}/requirements.txt`, requirements);
-    
-    return {
-      success: true,
-      output: {
-        message: 'Gradio app created successfully',
-        location: projectDir,
-        files: ['app.py', 'requirements.txt']
-      },
-      artifacts: {
-        mainFile: `${projectDir}/app.py`,
-        requirementsFile: `${projectDir}/requirements.txt`
-      }
-    };
-  }
-
-  private async createPythonRestAPI(task: TaskDefinition, workDir: string): Promise<any> {
-    // Create a Python REST API using FastAPI
-    const projectName = 'python-rest-api';
-    const projectDir = `${workDir}/${projectName}`;
-    await fs.mkdir(projectDir, { recursive: true });
-    
-    // Create main FastAPI app file
-    const appCode = `from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import Optional
-
-app = FastAPI(title="Python REST API", version="1.0.0")
-
-class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: Optional[bool] = None
-
-@app.get("/")
-async def root():
-    return {"message": "Welcome to Python REST API"}
-
-@app.get("/items/{item_id}")
-async def read_item(item_id: int, q: Optional[str] = None):
-    return {"item_id": item_id, "q": q}
-
-@app.post("/items/")
-async def create_item(item: Item):
-    return item
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-`;
-    
-    await fs.writeTextFile(`${projectDir}/main.py`, appCode);
-    
-    // Create requirements.txt
-    const requirements = `fastapi
-uvicorn[standard]
-`;
-    await fs.writeTextFile(`${projectDir}/requirements.txt`, requirements);
-    
-    return {
-      success: true,
-      output: {
-        message: 'Python REST API created successfully',
-        location: projectDir,
-        files: ['main.py', 'requirements.txt']
-      },
-      artifacts: {
-        mainFile: `${projectDir}/main.py`,
-        requirementsFile: `${projectDir}/requirements.txt`
-      }
-    };
   }
 }

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { getErrorMessage } from '../utils/error-handler.js';
 
 import { Command } from 'commander';
 import * as path from 'path';
-import { copyPrompts, copyPromptsEnhanced } from './prompt-copier-enhanced';
+import { copyPrompts, copyPromptsEnhanced } from './prompt-copier-enhanced.js';
 import { 
   PromptConfigManager, 
   PromptPathResolver, 
@@ -10,10 +11,10 @@ import {
   createProgressBar,
   formatFileSize,
   formatDuration
-} from './prompt-utils';
-import { logger } from '../core/logger';
+} from './prompt-utils.js';
+import { logger } from '../core/logger.js';
 
-const program: any = new Command();
+const program = new Command();
 
 program
   .name('prompt-copier')
@@ -35,7 +36,7 @@ program
   .option('--exclude <patterns>', 'Exclude patterns (comma-separated)')
   .option('--dry-run', 'Show what would be copied without actually copying')
   .option('--enhanced', 'Use enhanced copier with worker threads')
-  .action(async (options: any) => {
+  .action(async (options) => {
     try {
       const configManager = new PromptConfigManager();
       const config = await configManager.loadConfig();
@@ -67,7 +68,7 @@ program
       // Create progress bar
       let progressBar: ReturnType<typeof createProgressBar> | null = null;
       
-      (copyOptions as any).progressCallback = (progress: any) => {
+      copyOptions.progressCallback = (progress) => {
         if (!progressBar) {
           progressBar = createProgressBar(progress.total);
         }
@@ -115,7 +116,7 @@ program
   .command('discover')
   .description('Discover prompt directories in the current project')
   .option('-b, --base <path>', 'Base path to search from', process.cwd())
-  .action(async (options: any) => {
+  .action(async (options) => {
     try {
       const resolver = new PromptPathResolver(options.base);
       const directories = await resolver.discoverPromptDirectories();
@@ -135,11 +136,10 @@ program
   });
 
 program
-  .command('validate')
+  .command('validate <path>')
   .description('Validate prompt files')
-  .argument('<path>', 'Path to validate (file or directory)')
   .option('--recursive', 'Validate recursively')
-  .action(async (filePath: any, options: any) => {
+  .action(async (filePath, options) => {
     try {
       const stats = await require('fs').promises.stat(filePath);
       const files: string[] = [];
@@ -207,7 +207,7 @@ program
   .option('--init', 'Initialize default configuration')
   .option('--show', 'Show current configuration')
   .option('--profiles', 'List available profiles')
-  .action(async (options: any) => {
+  .action(async (options) => {
     try {
       const configManager = new PromptConfigManager();
       
@@ -239,12 +239,11 @@ program
   });
 
 program
-  .command('rollback')
+  .command('rollback <manifest>')
   .description('Rollback from backup')
-  .argument('<manifest>', 'Path to backup manifest file')
-  .action(async (manifestPath: any) => {
+  .action(async (manifestPath) => {
     try {
-      const { PromptCopier } = await import('./prompt-copier');
+      const { PromptCopier } = await import('./prompt-copier.js');
       const copier = new PromptCopier({
         source: '',
         destination: ''
@@ -265,7 +264,7 @@ program
   .option('-d, --destination <path>', 'Destination directory')
   .option('--bidirectional', 'Enable bidirectional sync')
   .option('--delete', 'Delete files not present in source')
-  .action(async (options: any) => {
+  .action(async (options) => {
     try {
       // This would implement incremental sync functionality
       console.log('Sync functionality not yet implemented');

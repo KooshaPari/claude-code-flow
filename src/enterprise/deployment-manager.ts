@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 import { EventEmitter } from 'events';
 import { writeFile, readFile, mkdir, readdir } from 'fs/promises';
 import { join } from 'path';
@@ -301,7 +302,7 @@ export class DeploymentManager extends EventEmitter {
   ) {
     super();
     this.deploymentsPath = deploymentsPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'DeploymentManager' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
     this.config = config || ConfigManager.getInstance();
   }
 
@@ -537,8 +538,7 @@ export class DeploymentManager extends EventEmitter {
       stage.status = 'failed';
       stage.endTime = new Date();
       
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.addLog(stage, 'error', `Stage failed: ${errorMessage}`, 'system');
+      this.addLog(stage, 'error', `Stage failed: ${(error instanceof Error ? error.message : String(error))}`, 'system');
       
       // Retry logic
       if (stage.retryPolicy.maxRetries > 0) {
@@ -616,7 +616,7 @@ export class DeploymentManager extends EventEmitter {
       childProcess.on('error', (error) => {
         clearTimeout(timeout);
         this.activeProcesses.delete(`${deployment.id}-${stage.id}-${command.id}`);
-        this.addLog(stage, 'error', `Command error: ${error.message}`, 'command');
+        this.addLog(stage, 'error', `Command error: ${(error instanceof Error ? error.message : String(error))}`, 'command');
         reject(error);
       });
     });
@@ -679,7 +679,7 @@ export class DeploymentManager extends EventEmitter {
     } catch (error) {
       this.addAuditEntry(deployment, userId, 'rollback_failed', 'deployment', {
         deploymentId,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
 
       this.logger.error(`Rollback failed for deployment ${deploymentId}`, { error });
@@ -1186,7 +1186,7 @@ export class DeploymentManager extends EventEmitter {
 
     this.addAuditEntry(deployment, 'system', 'deployment_error', 'deployment', {
       deploymentId: deployment.id,
-      error: error.message
+      error: (error instanceof Error ? error.message : String(error))
     });
 
     await this.saveDeployment(deployment);

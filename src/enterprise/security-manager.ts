@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 import { EventEmitter } from 'events';
 import { writeFile, readFile, mkdir, readdir } from 'fs/promises';
 import { join } from 'path';
@@ -363,7 +364,7 @@ export class SecurityManager extends EventEmitter {
   ) {
     super();
     this.securityPath = securityPath;
-    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' }, { component: 'SecurityManager' });
+    this.logger = logger || new Logger({ level: 'info', format: 'text', destination: 'console' });
     this.config = config || ConfigManager.getInstance();
   }
 
@@ -529,7 +530,7 @@ export class SecurityManager extends EventEmitter {
 
       this.addAuditEntry(scan, 'system', 'scan_failed', 'scan', {
         scanId,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
 
       await this.saveScan(scan);
@@ -1077,8 +1078,7 @@ export class SecurityManager extends EventEmitter {
           const findings = this.parseNpmAuditResults(auditResult);
           resolve(findings);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          reject(new Error(`Failed to parse npm audit results: ${errorMessage}`));
+          reject(new Error(`Failed to parse npm audit results: ${(error instanceof Error ? error.message : String(error))}`));
         }
       });
 

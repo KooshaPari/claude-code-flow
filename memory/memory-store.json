@@ -1,94 +1,112 @@
 {
   "default": [
     {
-      "key": "research_findings",
-      "value": "Important research about authentication patterns",
+      "key": "key18",
+      "value": "value18",
       "namespace": "default",
-      "timestamp": 1749614503887
+      "timestamp": 1751683807565
     },
     {
-      "key": "previous_work",
-      "value": "Completed user authentication module with JWT",
+      "key": "research/neural-interfaces/key-findings",
+      "value": "NEURAL INTERFACE KEY FINDINGS: NON-INVASIVE: EEG (1-5ms temporal, 5-10cm spatial, 9-50k+), fNIRS (blood oxygenation, 1-3cm spatial), MEG (<1ms temporal, 2-5mm spatial, -3M), Transcranial stim (TMS/tDCS/tACS). INVASIVE: Utah Arrays (96-100 electrodes, FDA approved), Michigan Probes (less damage, customizable), Neuralink-style (1024+ flexible electrodes, wireless), ECoG (surface arrays). SIGNAL PROCESSING: CSP (80-90% motor imagery), ICA (artifact removal), Deep Learning (EEGNet, Transformers, 70-95% accuracy). FRAMEWORKS: OpenBCI, BCI2000, MNE-Python, EEGLAB/BCILAB. SAFETY: FDA Class II/III, ISO 14708, ISO 10993, Pt/Ir electrodes. FUTURE: 10k+ channels, bidirectional, edge AI, biodegradable.",
       "namespace": "default",
-      "timestamp": 1749614509644
+      "timestamp": 1752018127114
     },
     {
-      "key": "code_requirements",
-      "value": "Simple Calculator App Requirements:\n1. Basic arithmetic operations: addition (+), subtraction (-), multiplication (*), division (/)\n2. Support for decimal numbers\n3. Clear/reset functionality\n4. Error handling for division by zero\n5. Command-line interface for easy interaction\n6. Modular, testable code structure\n7. Support for operation chaining (e.g., 2 + 3 * 4)\n8. Memory functions (store, recall, clear)\nTarget: Node.js application with clean architecture",
+      "key": "research/neural-interfaces/commercial-systems",
+      "value": "COMMERCIAL BCI SYSTEMS: Consumer: Emotiv EPOC X (49, 14ch), NeuroSky MindWave (9, 1ch), Muse headband (49, 4ch). Research: g.tec g.USBamp (256ch), Brain Products actiCHamp Plus (160ch), NIRx NIRSport2 (64ch fNIRS), Kernel Flow (full-head fNIRS). Clinical: Utah Array/BrainGate (FDA approved), NeuroPace RNS (epilepsy), Medtronic DBS. High-end: MEGIN TRIUX neo (306ch MEG), CTF MEG (275ch). Development: OpenBCI Cyton (8ch, 99), Ganglion (4ch, 99).",
       "namespace": "default",
-      "timestamp": 1749667276110
+      "timestamp": 1752018139320
     },
     {
-      "key": "code_pseudocode",
-      "value": "Calculator Pseudocode:\n\n1. Expression Parser:\n   - tokenize(expression) -> [tokens]\n   - parse tokens following order of operations\n   - evaluate expression tree\n\n2. Calculator Core:\n   - add(a, b) -> a + b\n   - subtract(a, b) -> a - b\n   - multiply(a, b) -> a * b\n   - divide(a, b) -> check b != 0, then a / b\n   \n3. Memory Management:\n   - memory = 0\n   - memoryStore(value) -> memory = value\n   - memoryRecall() -> return memory\n   - memoryClear() -> memory = 0\n\n4. Main Interface:\n   - prompt user for expression\n   - parse and evaluate\n   - display result\n   - handle errors gracefully",
+      "key": "research/neural-interfaces/performance-benchmarks",
+      "value": "BCI PERFORMANCE BENCHMARKS: Motor Imagery 4-class: 70-80% accuracy. P300 Speller: 90-95% accuracy. Emotion Recognition: 60-75% accuracy. Sleep Stage Classification: 80-85% accuracy. Single neuron decoding: 95%+ (invasive). Speech decoding: 70-80 WPM (invasive). Cursor control: 6-8 targets/min (invasive), 2-4 targets/min (non-invasive). Information transfer rates: 1-3 bits/s (non-invasive), 3-5 bits/s (invasive). Training time: 10-30 min calibration typical.",
       "namespace": "default",
-      "timestamp": 1749667293563
+      "timestamp": 1752018149865
     },
     {
-      "key": "code_architecture",
-      "value": "Calculator Architecture:\n\ncalculator-app/\n├── package.json         # Node.js project config\n├── README.md           # Project documentation\n├── src/\n│   ├── index.js        # Main entry point\n│   ├── core/\n│   │   ├── Calculator.js     # Core calculator operations\n│   │   └── ExpressionParser.js  # Expression parsing logic\n│   └── utils/\n│       └── validators.js     # Input validation utilities\n├── tests/\n│   ├── Calculator.test.js\n│   └── ExpressionParser.test.js\n└── docs/\n    └── usage.md        # Usage examples\n\nKey Design Decisions:\n- Separation of concerns: parsing vs calculation\n- Modular design for easy testing\n- No hardcoded values\n- Clean error handling",
+      "key": "safety/critical-limits",
+      "value": "{\"electrical\":{\"current_density_max_uA_mm2\":2.0,\"voltage_dc_noninvasive_V\":5.0,\"voltage_dc_invasive_V\":0.5,\"charge_injection_max_uC_cm2\":30.0,\"pulse_duration_max_ms\":1.0,\"leakage_current_max_uA\":10.0,\"isolation_voltage_kV\":4.0},\"thermal\":{\"temperature_rise_max_C\":2.0,\"absolute_temp_max_C\":41.0,\"power_density_max_mW_cm2\":40.0,\"thermal_shutdown_C\":41.0},\"temporal\":{\"duty_cycle_max_percent\":50,\"session_duration_max_min\":120,\"break_interval_min\":30,\"watchdog_timeout_ms\":100},\"cognitive\":{\"information_rate_max_bps\":100,\"frequency_sensory_max_Hz\":1000,\"frequency_motor_max_Hz\":100,\"frequency_cognitive_max_Hz\":40},\"emergency\":{\"estop_response_ms\":10,\"power_removal_ms\":50,\"disconnect_time_ms\":50,\"alert_time_ms\":1000},\"safety_factors\":{\"current_safety_factor\":1.1,\"voltage_safety_factor\":1.05,\"temperature_margin_C\":2.0}}",
       "namespace": "default",
-      "timestamp": 1749667316258
+      "timestamp": 1752018150613
     },
     {
-      "key": "code_implementation",
-      "value": "Created hello world shell script in /hello-world/hello.sh. Script is executable and displays hostname, date, and user info. Ready for SSH execution.",
+      "key": "research/neural-interfaces/safety-regulations",
+      "value": "BCI SAFETY REGULATIONS: FDA: Class II non-invasive (510k), Class III invasive (PMA). ISO 14708: Active implantable devices. ISO 10993: Biocompatibility (cytotoxicity, sensitization, irritation, systemic toxicity, genotoxicity, implantation). IEC 60601: Electrical safety. IEC 62304: Software validation. Materials: Platinum/Iridium electrodes, Parylene-C insulation, medical silicone, titanium packaging. Clinical trials required for Class III. MRI compatibility testing. EMC testing. Hermetic sealing for implants.",
       "namespace": "default",
-      "timestamp": 1749674078738
+      "timestamp": 1752018160824
+    },
+    {
+      "key": "safety/emergency-protocols",
+      "value": "{\"immediate_disconnect\":{\"user_initiated\":[\"physical_estop\",\"voice_command\",\"triple_tap\"],\"system_initiated\":[\"safety_violation\",\"power_loss\",\"component_failure\"],\"response_time_ms\":10},\"medical_response\":{\"auto_alert\":true,\"telemedicine_enabled\":true,\"first_responder_access\":true,\"transport_mode\":\"safe_state\"},\"panic_response\":{\"triggers\":[\"physical_button\",\"voice_help\",\"software_button\"],\"actions\":[\"immediate_disconnect\",\"alert_contacts\",\"log_state\",\"recovery_mode\"]}}",
+      "namespace": "default",
+      "timestamp": 1752018161838
+    },
+    {
+      "key": "safety/compliance-requirements",
+      "value": "{\"standards\":{\"FDA\":\"Class_II_III\",\"CE\":\"MDR_compliant\",\"ISO\":[\"14708\",\"10993\",\"14971\",\"14155\"],\"IEC\":[\"60601-1\",\"60601-1-2\",\"62304\"]},\"testing\":{\"electrical_safety\":\"IEC_60601-1\",\"EMC\":\"IEC_60601-1-2\",\"biocompatibility\":\"ISO_10993_series\",\"software\":\"IEC_62304\"},\"documentation\":{\"DHF\":\"required\",\"risk_management\":\"ISO_14971\",\"clinical_evaluation\":\"ongoing\",\"post_market_surveillance\":\"active\"}}",
+      "namespace": "default",
+      "timestamp": 1752018174195
+    },
+    {
+      "key": "design/architecture/decisions",
+      "value": "Architecture decisions for Neural Link Hive Integration: 1) Microservice architecture for scalability and modularity. 2) Real-time processing pipeline with <50ms end-to-end latency requirement. 3) Multi-layer safety system with hardware kill switches and software monitors. 4) Hybrid C++/Rust core for performance with Python prototyping layer. 5) Time-series database (InfluxDB/TimescaleDB) for neural pattern storage. 6) End-to-end encryption with neural signature authentication. 7) Support for 256 channels at 30kHz sampling rate. 8) Modular hardware abstraction layer for multiple BCI devices. 9) Bidirectional communication with feedback encoding. 10) GPU acceleration for neural decoding. 11) Kubernetes-based deployment for production scalability. 12) Comprehensive safety monitoring with emergency shutoff in <5ms.",
+      "namespace": "default",
+      "timestamp": 1752018181435
+    },
+    {
+      "key": "design/architecture/tech-stack",
+      "value": "Technical Stack: OS: Real-time Linux with PREEMPT_RT. Languages: C++17/20 for signal processing, Rust for memory-safe components, CUDA for GPU acceleration, Python for prototypes. Databases: InfluxDB for time-series neural data, PostgreSQL for patterns, Redis for caching. Communication: gRPC internal, WebRTC streaming, custom TCP for hive. Key Libraries: Eigen for linear algebra, TensorFlow C++ API for ML, OpenCL for cross-platform GPU.",
+      "namespace": "default",
+      "timestamp": 1752018192664
+    },
+    {
+      "key": "architecture/decisions",
+      "value": "{\"module\": \"shared-memory\", \"decisions\": [\"Use SQLite with better-sqlite3 for persistence\", \"Create unified module supporting both .swarm/ and .hive-mind/ directories\", \"Implement base SharedMemory class with core methods\", \"Extend with SwarmMemory for MCP-specific needs\", \"Design flexible schema with migration support\", \"Optimize for performance with caching and pooling\"]}",
+      "namespace": "default",
+      "timestamp": 1752116024819
     },
     {
       "key": "test-key",
-      "value": "Test value from CLI test",
+      "value": "Test value for persistence",
       "namespace": "default",
-      "timestamp": 1749836389246
+      "timestamp": 1752116037136
     },
     {
-      "key": "architect_requirements",
-      "value": "Simple REST API: Express.js-based, single file server, in-memory data storage, basic CRUD operations for a resource (e.g., tasks/todos), health endpoint, minimal dependencies (only express), Jest/Supertest for testing, no auth, no database, quick setup",
+      "key": "restart-test",
+      "value": "Value before restart",
       "namespace": "default",
-      "timestamp": 1749949727596
+      "timestamp": 1752116074406
     },
     {
-      "key": "architect_architecture",
-      "value": "Simple Express.js REST API with single-file architecture. Components: Express server, minimal middleware (JSON parser, error handler), RESTful routes for tasks resource (/api/v1/tasks), in-memory data store (array). No auth, no DB, focus on clarity and extensibility.",
+      "key": "integration/architecture-found",
+      "value": "Found SharedMemory module at src/memory/shared-memory.js created by Architecture Agent",
       "namespace": "default",
-      "timestamp": 1749949788123
+      "timestamp": 1752116118573
     },
     {
-      "key": "architect_tech_specs",
-      "value": "Task resource model: id, title, description, completed, createdAt, updatedAt. RESTful endpoints: GET /health, GET/POST /api/v1/tasks, GET/PUT/DELETE /api/v1/tasks/:id. JSON format, proper status codes, consistent error handling. No auth, basic validation on title field.",
+      "key": "integration/mcp-update-decision",
+      "value": "Updating MCP server to use SharedMemory class from src/memory/shared-memory.js for memory_usage tool implementation",
       "namespace": "default",
-      "timestamp": 1749949849537
+      "timestamp": 1752116136755
     },
     {
-      "key": "architect_implementation_plan",
-      "value": "Phase 1: Setup Express server (code mode). Phase 2: CRUD operations with TDD (tdd mode). Phase 3: Validation and error handling (code mode). Phase 4: Documentation (docs-writer mode). Phase 5: Security review (security-review mode). Total: 50min sequential, 15min parallel.",
+      "key": "integration/completed-tasks",
+      "value": "Integrated SharedMemory into MCP server, updated init command to create .swarm directory and initialize SQLite database, incremented version to 1.0.44",
       "namespace": "default",
-      "timestamp": 1749949912241
+      "timestamp": 1752116309680
     },
     {
-      "key": "architect_current_analysis",
-      "value": "REST API project status: Implementation uses 'items' resource while spec uses 'tasks'. Missing: API versioning (/api/v1/), task data model with timestamps/completed field, test suite with Jest/Supertest, query parameters for filtering/pagination. Need to align implementation with specification and complete missing features.",
+      "key": "testing/complete",
+      "value": "Testing Agent has completed comprehensive testing. Results: Local persistence PASSED, NPM partially passed, Docker skipped, Regression PASSED. Full report at test-results/memory-persistence-test-report.md",
       "namespace": "default",
-      "timestamp": 1749950888911
+      "timestamp": 1752116402654
     },
     {
-      "key": "architect_completion_plan",
-      "value": "Architecture plan to align REST API implementation with specification: 1) Migrate from items to tasks resource with proper data model, 2) Add API versioning (/api/v1/), 3) Implement query parameters and filtering, 4) Add comprehensive test suite with Jest/Supertest, 5) Update error handling to match spec. Key components: server.js (main app), routes (API versioning), controllers (business logic), storage (in-memory CRUD), middleware (validation/errors). Phases: Core refactor -> Feature implementation -> Testing -> QA.",
+      "key": "architecture/memory-module-completed",
+      "value": "{\"status\": \"completed\", \"files_created\": [\"shared-memory.js\", \"swarm-memory.js\", \"index.js\", \"migration.js\", \"test-example.js\", \"README.md\"], \"features\": [\"SQLite persistence\", \"LRU caching\", \"Migration support\", \"TTL support\", \"Swarm-specific features\", \"MCP integration\"], \"timestamp\": \"2025-07-10T03:00:19Z\"}",
       "namespace": "default",
-      "timestamp": 1749950959822
-    },
-    {
-      "key": "architect_roadmap",
-      "value": "SPARC implementation roadmap created with 8 phases: 1) Core refactoring (code mode) - migrate to tasks resource, 2) Test suite (tdd mode) - Jest/Supertest tests, 3) Features (code mode) - query parameters, 4) Error handling (code mode) - consistent errors, 5) Security (security-review mode), 6) Optimization (refinement mode), 7) Documentation (docs-writer mode), 8) Integration testing. Can execute sequentially or use swarm mode for parallel execution.",
-      "namespace": "default",
-      "timestamp": 1749951017904
-    },
-    {
-      "key": "test_key",
-      "value": "test_value_1750109706",
-      "namespace": "default",
-      "timestamp": 1750109707314
+      "timestamp": 1752116421782
     }
   ]
 }

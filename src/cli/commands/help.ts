@@ -1,640 +1,29 @@
+import { getErrorMessage } from '../../utils/error-handler.js';
 /**
  * Comprehensive help system for Claude-Flow CLI
  */
 
-import { stdio, console_ } from '../../utils/runtime.js';
-
-// ANSI color codes for cross-platform terminal styling
-type ColorFunction = {
-  (str: string): string;
-  bold: (str: string) => string;
-};
-
-const createColorFunction = (code: string, boldCode?: string): ColorFunction => {
-  const fn = (str: string) => `\x1b[${code}m${str}\x1b[0m`;
-  (fn as ColorFunction).bold = boldCode ? (str: string) => `\x1b[1m\x1b[${boldCode}m${str}\x1b[0m` : fn;
-  return fn as ColorFunction;
-};
-
-const colors = {
-  cyan: createColorFunction('36', '36'),
-  yellow: createColorFunction('33', '33'),
-  white: createColorFunction('37', '37'),
-  gray: createColorFunction('90', '90'),
-  red: createColorFunction('31', '31')
-};
-
-// Simple table implementation for help display
-class HelpTable {
-  private headers: string[] = [];
-  private rows: string[][] = [];
-  
-  header(headers: string[]): this {
-    this.headers = headers;
-    return this;
-  }
-  
-  push(row: string[]): this {
-    this.rows.push(row);
-    return this;
-  }
-  
-  border(enabled: boolean = true): this {
-    // Just a no-op for API compatibility
-    return this;
-  }
-  
-  render(): void {
-    if (this.headers.length > 0) {
-      const headerLine = this.headers.map((h, i) => h.padEnd(i === 0 ? 20 : 15)).join(' ');
-      console.log(headerLine);
-      console.log('─'.repeat(headerLine.length));
-    }
-    
-    for (const row of this.rows) {
-      const rowLine = row.map((cell, i) => {
-        // Strip ANSI codes for width calculation, then pad
-        const cleanCell = cell.replace(/\x1b\[[0-9;]*m/g, '');
-        const padding = Math.max(0, (i === 0 ? 20 : 15) - cleanCell.length);
-        return cell + ' '.repeat(padding);
-      }).join(' ');
-      console.log(rowLine);
-    }
-  }
-}
-
-// Simple prompt implementation for interactive help
-class HelpSelect {
-  static async prompt<T>(options: { 
-    message: string; 
-    options: Array<{ name: string; value: T }> 
-  }): Promise<T> {
-    console.log(colors.cyan.bold(options.message));
-    console.log();
-    
-    options.options.forEach((option, index) => {
-      console.log(`${colors.gray((index + 1).toString().padStart(2))}. ${colors.white(option.name)}`);
-    });
-    
-    console.log();
-    console.log(colors.gray('Enter number and press Enter: '));
-    
-    return new Promise<T>((resolve) => {
-      const stdin = stdio.stdin;
-      
-      const handleInput = (data: string | Buffer) => {
-        const input = data.toString().trim();
-        const index = parseInt(input) - 1;
-        
-        if (index >= 0 && index < options.options.length) {
-          resolve(options.options[index].value);
-        } else if (input.toLowerCase() === 'exit' || input.toLowerCase() === 'q') {
-          resolve(options.options.find(opt => opt.value === 'exit')?.value || options.options[0].value);
-        } else {
-          console.log(colors.red('Invalid selection. Please try again.'));
-          console.log(colors.gray('Enter number and press Enter: '));
-        }
-      };
-      
-      if (typeof stdin.once === 'function') {
-        // Node.js style
-        stdin.once('data', handleInput);
-        if (typeof stdin.resume === 'function') {
-          stdin.resume();
-        }
-      } else {
-        // Fallback for other environments
-        setTimeout(() => resolve(options.options[0].value), 100);
-      }
-    });
-  }
-}
-
-// Mock Command class for when @cliffy is not available
-class MockCommand {
-  private _name = '';
-  private _description = '';
-  private _usage = '';
-  private _version = '';
-  private _arguments: Array<{ name: string; description?: string; required?: boolean; optional?: boolean; variadic?: boolean; type?: string; choices?: string[]; default?: any; collect?: boolean; value?: any; list?: boolean; separator?: string; args?: any[] }> = [];
-  private _options: Array<{ flags: string; description: string; required?: boolean; optional?: boolean; variadic?: boolean; default?: any; choices?: string[]; collect?: boolean; value?: any; conflicts?: string[]; depends?: string[]; standalone?: boolean; hidden?: boolean; global?: boolean; prepend?: boolean; args?: any[]; list?: boolean; separator?: string; type?: string }> = [];
-  private _action?: Function;
-  private _examples: Array<{ name: string; description: string }> = [];
-  private _commands: MockCommand[] = [];
-  private _globalOptions: Array<{ flags: string; description: string; required?: boolean; optional?: boolean; variadic?: boolean; default?: any; choices?: string[]; collect?: boolean; value?: any; conflicts?: string[]; depends?: string[]; standalone?: boolean; hidden?: boolean; global?: boolean; prepend?: boolean; args?: any[]; list?: boolean; separator?: string; type?: string }> = [];
-  private _parent?: MockCommand;
-  private _children: MockCommand[] = [];
-  private _meta: any = {};
-  private _env: Record<string, string> = {};
-  private _types: Record<string, any> = {};
-  private _hooks: Record<string, Array<(options: any, ...args: any[]) => void | Promise<void>>> = {};
-  private _listeners: Record<string, Array<(...args: any[]) => void>> = {};
-  private _executable = false;
-  private _standalone = false;
-  private _hidden = false;
-  private _isAction = false;
-  private _global = false;
-  private _throwErrors = false;
-  private _stopEarly = false;
-  private _allowEmpty = false;
-  private _allowExcess = false;
-
-  // Configuration methods
-  name(name: string): this {
-    this._name = name;
-    return this;
-  }
-
-  version(version: string, flags?: string, description?: string): this {
-    this._version = version;
-    return this;
-  }
-
-  description(desc: string): this {
-    this._description = desc;
-    return this;
-  }
-
-  usage(usage: string): this {
-    this._usage = usage;
-    return this;
-  }
-
-  example(name: string, description: string): this {
-    this._examples.push({ name, description });
-    return this;
-  }
-
-  examples(examples: Array<{ name: string; description: string }>): this {
-    this._examples = examples;
-    return this;
-  }
-
-  // Options
-  option(flags: string, description: string, defaultValue?: any): this;
-  option(flags: string, description: string, options: { default?: any; required?: boolean; collect?: boolean; value?: any; choices?: string[]; conflicts?: string[]; depends?: string[]; standalone?: boolean; hidden?: boolean; global?: boolean; prepend?: boolean; args?: any[]; list?: boolean; separator?: string; type?: string }): this;
-  option(flags: string, description: string, fn: (value: any, previous: any) => any, defaultValue?: any): this;
-  option(flags: string, description: string, optionsOrFnOrDefault?: any, defaultValue?: any): this {
-    const option: any = { flags, description };
-    
-    if (typeof optionsOrFnOrDefault === 'function') {
-      option.parseArg = optionsOrFnOrDefault;
-      option.default = defaultValue;
-    } else if (typeof optionsOrFnOrDefault === 'object' && optionsOrFnOrDefault !== null) {
-      Object.assign(option, optionsOrFnOrDefault);
-    } else if (optionsOrFnOrDefault !== undefined) {
-      option.default = optionsOrFnOrDefault;
-    }
-
-    this._options.push(option);
-    return this;
-  }
-
-  globalOption(flags: string, description: string, defaultValue?: any): this;
-  globalOption(flags: string, description: string, options: { default?: any; required?: boolean; collect?: boolean; value?: any; choices?: string[]; conflicts?: string[]; depends?: string[]; standalone?: boolean; hidden?: boolean; global?: boolean; prepend?: boolean; args?: any[]; list?: boolean; separator?: string; type?: string }): this;
-  globalOption(flags: string, description: string, fn: (value: any, previous: any) => any, defaultValue?: any): this;
-  globalOption(flags: string, description: string, optionsOrFnOrDefault?: any, defaultValue?: any): this {
-    const option: any = { flags, description, global: true };
-    
-    if (typeof optionsOrFnOrDefault === 'function') {
-      option.parseArg = optionsOrFnOrDefault;
-      option.default = defaultValue;
-    } else if (typeof optionsOrFnOrDefault === 'object' && optionsOrFnOrDefault !== null) {
-      Object.assign(option, optionsOrFnOrDefault);
-    } else if (optionsOrFnOrDefault !== undefined) {
-      option.default = optionsOrFnOrDefault;
-    }
-
-    this._globalOptions.push(option);
-    return this;
-  }
-
-  // Arguments
-  arguments(desc: string): this {
-    // Parse argument description like "[option:string]" or "<required:string>"
-    this._arguments.push({ name: desc });
-    return this;
-  }
-
-  argument(name: string, description?: string, defaultValue?: any): this;
-  argument(name: string, description: string, options: { default?: any; required?: boolean; optional?: boolean; variadic?: boolean; type?: string; choices?: string[]; collect?: boolean; value?: any; list?: boolean; separator?: string; args?: any[] }): this;
-  argument(name: string, description: string, fn: (value: any, previous: any) => any, defaultValue?: any): this;
-  argument(name: string, description?: string, optionsOrFnOrDefault?: any, defaultValue?: any): this {
-    const argument: any = { name, description };
-    
-    if (typeof optionsOrFnOrDefault === 'function') {
-      argument.parseArg = optionsOrFnOrDefault;
-      argument.default = defaultValue;
-    } else if (typeof optionsOrFnOrDefault === 'object' && optionsOrFnOrDefault !== null) {
-      Object.assign(argument, optionsOrFnOrDefault);
-    } else if (optionsOrFnOrDefault !== undefined) {
-      argument.default = optionsOrFnOrDefault;
-    }
-
-    this._arguments.push(argument);
-    return this;
-  }
-
-  // Commands
-  command(name: string, cmd?: MockCommand): MockCommand;
-  command(name: string, description?: string): MockCommand;
-  command(name: string, description: string, options: any): MockCommand;
-  command(name: string, cmdOrDescription?: MockCommand | string, options?: any): MockCommand {
-    if (cmdOrDescription instanceof MockCommand) {
-      this._commands.push(cmdOrDescription);
-      cmdOrDescription._parent = this;
-      this._children.push(cmdOrDescription);
-      return cmdOrDescription;
-    } else {
-      const newCommand = new MockCommand();
-      newCommand._name = name;
-      if (typeof cmdOrDescription === 'string') {
-        newCommand._description = cmdOrDescription;
-      }
-      if (options) {
-        Object.assign(newCommand, options);
-      }
-      this._commands.push(newCommand);
-      newCommand._parent = this;
-      this._children.push(newCommand);
-      return newCommand;
-    }
-  }
-
-  // Actions
-  action(fn: (options: any, ...args: any[]) => void | Promise<void>): this {
-    this._action = fn;
-    this._isAction = true;
-    return this;
-  }
-
-  // Parsing (mock implementations)
-  async parse(args?: string[], options?: { from?: string; run?: boolean }): Promise<any> {
-    if (options?.run !== false && this._action) {
-      await this._action({}, ...(args || []));
-    }
-    return {};
-  }
-
-  parseOptions(args: string[]): any {
-    return {};
-  }
-
-  parseArguments(args: string[]): any {
-    return {};
-  }
-
-  // Help
-  showHelp(): void {
-    console.log(this.getHelp());
-  }
-
-  outputHelp(): void {
-    this.showHelp();
-  }
-
-  help(command?: string): string {
-    return this.getHelp();
-  }
-
-  helpInformation(): string {
-    return this.getHelp();
-  }
-
-  getHelp(): string {
-    return `Help for ${this._name || 'command'}: ${this._description}`;
-  }
-
-  // Completion
-  complete(complete: (cmd: MockCommand, parent?: MockCommand) => string[] | Promise<string[]>): this {
-    return this;
-  }
-
-  // Utilities
-  getName(): string {
-    return this._name;
-  }
-
-  getDescription(): string {
-    return this._description;
-  }
-
-  getUsage(): string {
-    return this._usage;
-  }
-
-  getVersion(): string {
-    return this._version;
-  }
-
-  getExamples(): Array<{ name: string; description: string }> {
-    return this._examples;
-  }
-
-  getOptions(): Array<any> {
-    return this._options;
-  }
-
-  getArguments(): Array<any> {
-    return this._arguments;
-  }
-
-  getCommands(): MockCommand[] {
-    return this._commands;
-  }
-
-  getGlobalOptions(): Array<any> {
-    return this._globalOptions;
-  }
-
-  getOption(name: string): any | undefined {
-    return this._options.find(opt => opt.flags.includes(name));
-  }
-
-  getArgument(name: string): any | undefined {
-    return this._arguments.find(arg => arg.name === name);
-  }
-
-  getCommand(name: string): MockCommand | undefined {
-    return this._commands.find(cmd => cmd._name === name);
-  }
-
-  hasOption(name: string): boolean {
-    return this.getOption(name) !== undefined;
-  }
-
-  hasArgument(name: string): boolean {
-    return this.getArgument(name) !== undefined;
-  }
-
-  hasCommand(name: string): boolean {
-    return this.getCommand(name) !== undefined;
-  }
-
-  // State
-  isExecutable(): boolean {
-    return this._executable;
-  }
-
-  isStandalone(): boolean {
-    return this._standalone;
-  }
-
-  isHidden(): boolean {
-    return this._hidden;
-  }
-
-  isAction(): boolean {
-    return this._isAction;
-  }
-
-  isGlobal(): boolean {
-    return this._global;
-  }
-
-  // Error handling
-  throwErrors(throwErrors?: boolean): this {
-    if (throwErrors !== undefined) {
-      this._throwErrors = throwErrors;
-    }
-    return this;
-  }
-
-  // Configuration
-  stopEarly(stopEarly?: boolean): this {
-    if (stopEarly !== undefined) {
-      this._stopEarly = stopEarly;
-    }
-    return this;
-  }
-
-  allowEmpty(allowEmpty?: boolean): this {
-    if (allowEmpty !== undefined) {
-      this._allowEmpty = allowEmpty;
-    }
-    return this;
-  }
-
-  allowExcess(allowExcess?: boolean): this {
-    if (allowExcess !== undefined) {
-      this._allowExcess = allowExcess;
-    }
-    return this;
-  }
-
-  // Environment
-  env(envVars: Record<string, string>): this {
-    this._env = envVars;
-    return this;
-  }
-
-  // Meta
-  meta(meta: any): this {
-    this._meta = meta;
-    return this;
-  }
-
-  getMeta(): any {
-    return this._meta;
-  }
-
-  // Parent/Child relationships
-  getParent(): MockCommand | undefined {
-    return this._parent;
-  }
-
-  getChildren(): MockCommand[] {
-    return this._children;
-  }
-
-  // Execution
-  async execute(options?: any, ...args: any[]): Promise<any> {
-    if (this._action) {
-      await this._action(options || {}, ...args);
-    }
-  }
-
-  // Types
-  type(name: string, type: any): this {
-    this._types[name] = type;
-    return this;
-  }
-
-  // Reset
-  reset(): this {
-    this._name = '';
-    this._description = '';
-    this._usage = '';
-    this._version = '';
-    this._arguments = [];
-    this._options = [];
-    this._action = undefined;
-    this._examples = [];
-    this._commands = [];
-    this._globalOptions = [];
-    this._parent = undefined;
-    this._children = [];
-    this._meta = {};
-    this._env = {};
-    this._types = {};
-    this._hooks = {};
-    this._listeners = {};
-    return this;
-  }
-
-  // Clone
-  clone(): MockCommand {
-    const cloned = new MockCommand();
-    cloned._name = this._name;
-    cloned._description = this._description;
-    cloned._usage = this._usage;
-    cloned._version = this._version;
-    cloned._arguments = [...this._arguments];
-    cloned._options = [...this._options];
-    cloned._action = this._action;
-    cloned._examples = [...this._examples];
-    cloned._globalOptions = [...this._globalOptions];
-    cloned._meta = { ...this._meta };
-    cloned._env = { ...this._env };
-    cloned._types = { ...this._types };
-    return cloned;
-  }
-
-  // Validation
-  validate(): this {
-    return this;
-  }
-
-  // Hook
-  hook(event: string, fn: (options: any, ...args: any[]) => void | Promise<void>): this {
-    if (!this._hooks[event]) {
-      this._hooks[event] = [];
-    }
-    this._hooks[event].push(fn);
-    return this;
-  }
-
-  // Events
-  on(event: string, listener: (...args: any[]) => void): this {
-    if (!this._listeners[event]) {
-      this._listeners[event] = [];
-    }
-    this._listeners[event].push(listener);
-    return this;
-  }
-
-  off(event: string, listener: (...args: any[]) => void): this {
-    if (this._listeners[event]) {
-      this._listeners[event] = this._listeners[event].filter(l => l !== listener);
-    }
-    return this;
-  }
-
-  once(event: string, listener: (...args: any[]) => void): this {
-    const onceListener = (...args: any[]) => {
-      listener(...args);
-      this.off(event, onceListener);
-    };
-    this.on(event, onceListener);
-    return this;
-  }
-
-  emit(event: string, ...args: any[]): boolean {
-    if (this._listeners[event]) {
-      this._listeners[event].forEach(listener => listener(...args));
-      return this._listeners[event].length > 0;
-    }
-    return false;
-  }
-
-  // Property arrays (readonly properties)
-  get options(): Array<any> {
-    return this._options;
-  }
-
-  get commandArguments(): Array<any> {
-    return this._arguments;
-  }
-
-  get commands(): MockCommand[] {
-    return this._commands;
-  }
-
-  get globalOptions(): Array<any> {
-    return this._globalOptions;
-  }
-
-  // Readonly properties that expose internal state
-  get readonly(): {
-    readonly name: string;
-    readonly description: string;
-    readonly usage: string;
-    readonly version: string;
-    readonly examples: Array<{ name: string; description: string }>;
-    readonly parent: MockCommand | undefined;
-    readonly children: MockCommand[];
-    readonly executable: boolean;
-    readonly standalone: boolean;
-    readonly hidden: boolean;
-    readonly action: boolean;
-    readonly global: boolean;
-    readonly throwErrors: boolean;
-    readonly stopEarly: boolean;
-    readonly allowEmpty: boolean;
-    readonly allowExcess: boolean;
-    readonly meta: any;
-    readonly env: Record<string, string>;
-    readonly types: Record<string, any>;
-    readonly hooks: Record<string, Array<(options: any, ...args: any[]) => void | Promise<void>>>;
-    readonly listeners: Record<string, Array<(...args: any[]) => void>>;
-  } {
-    return {
-      name: this._name,
-      description: this._description,
-      usage: this._usage,
-      version: this._version,
-      examples: this._examples,
-      parent: this._parent,
-      children: this._children,
-      executable: this._executable,
-      standalone: this._standalone,
-      hidden: this._hidden,
-      action: this._isAction,
-      global: this._global,
-      throwErrors: this._throwErrors,
-      stopEarly: this._stopEarly,
-      allowEmpty: this._allowEmpty,
-      allowExcess: this._allowExcess,
-      meta: this._meta,
-      env: this._env,
-      types: this._types,
-      hooks: this._hooks,
-      listeners: this._listeners,
-    };
-  }
-}
-
-export const helpCommand = new MockCommand()
+import { Command } from 'commander';
+import chalk from 'chalk';
+import * as Table from 'cli-table3';
+import inquirer from 'inquirer';
+
+export const helpCommand = new Command()
   .description('Comprehensive help system with examples and tutorials')
-  .arguments('[topic:string]')
+  .argument('[topic:string]')
   .option('-i, --interactive', 'Start interactive help mode')
   .option('-e, --examples', 'Show examples for the topic')
   .option('--tutorial', 'Show tutorial for the topic')
   .option('--all', 'Show all available help topics')
-  .action(async (options: { interactive?: boolean; examples?: boolean; tutorial?: boolean; all?: boolean }, topic: string | undefined) => {
-    try {
-      if (options.interactive) {
-        await startInteractiveHelp();
-      } else if (options.all) {
-        showAllTopics();
-      } else if (topic) {
-        await showTopicHelp(topic, options);
-      } else {
-        showMainHelp();
-      }
-    } catch (error) {
-      console.error(colors.red('Error in help system:'), error instanceof Error ? error.message : String(error));
-      process.exit(1);
+  .action(async (options: any, topic: string | undefined) => {
+    if (options.interactive) {
+      await startInteractiveHelp();
+    } else if (options.all) {
+      showAllTopics();
+    } else if (topic) {
+      await showTopicHelp(topic, options);
+    } else {
+      showMainHelp();
     }
   });
 
@@ -1221,21 +610,21 @@ const HELP_TOPICS: HelpTopic[] = [
 ];
 
 function showMainHelp(): void {
-  console.log(colors.cyan.bold('Claude-Flow Help System'));
+  console.log(chalk.cyan.bold('Claude-Flow Help System'));
   console.log('─'.repeat(50));
   console.log();
   
-  console.log(colors.white('Claude-Flow is an advanced AI agent orchestration system.'));
-  console.log(colors.white('Use this help system to learn about features and best practices.'));
+  console.log(chalk.white('Claude-Flow is an advanced AI agent orchestration system.'));
+  console.log(chalk.white('Use this help system to learn about features and best practices.'));
   console.log();
   
-  console.log(colors.yellow.bold('Quick Start:'));
-  console.log(colors.gray('  claude-flow help getting-started    # Beginner tutorial'));
-  console.log(colors.gray('  claude-flow help --interactive      # Interactive help mode'));
-  console.log(colors.gray('  claude-flow help <topic>            # Specific topic help'));
+  console.log(chalk.yellow.bold('Quick Start:'));
+  console.log(chalk.gray('  claude-flow help getting-started    # Beginner tutorial'));
+  console.log(chalk.gray('  claude-flow help --interactive      # Interactive help mode'));
+  console.log(chalk.gray('  claude-flow help <topic>            # Specific topic help'));
   console.log();
   
-  console.log(colors.yellow.bold('Help Categories:'));
+  console.log(chalk.yellow.bold('Help Categories:'));
   
   const categories = {
     basic: 'Essential concepts and commands',
@@ -1247,47 +636,48 @@ function showMainHelp(): void {
   
   for (const [category, description] of Object.entries(categories)) {
     console.log();
-    console.log(colors.cyan.bold(`${category.toUpperCase()}:`));
-    console.log(colors.white(`  ${description}`));
+    console.log(chalk.cyan.bold(`${category.toUpperCase()}:`));
+    console.log(chalk.white(`  ${description}`));
     
     const topics = HELP_TOPICS.filter(t => t.category === category);
     for (const topic of topics) {
-      console.log(colors.gray(`    ${topic.name.padEnd(20)} ${topic.description}`));
+      console.log(chalk.gray(`    ${topic.name.padEnd(20)} ${topic.description}`));
     }
   }
   
   console.log();
-  console.log(colors.gray('Use "claude-flow help <topic>" for detailed information.'));
-  console.log(colors.gray('Use "claude-flow help --all" to see all topics.'));
+  console.log(chalk.gray('Use "claude-flow help <topic>" for detailed information.'));
+  console.log(chalk.gray('Use "claude-flow help --all" to see all topics.'));
 }
 
 function showAllTopics(): void {
-  console.log(colors.cyan.bold('All Help Topics'));
+  console.log(chalk.cyan.bold('All Help Topics'));
   console.log('─'.repeat(50));
   
-  const table = new HelpTable()
-    .header(['Topic', 'Category', 'Description'])
-    .border(true);
+  const table = new Table.default({
+    head: ['Topic', 'Category', 'Description'],
+    style: { head: ['cyan'] }
+  });
 
   for (const topic of HELP_TOPICS) {
     table.push([
-      colors.cyan.bold(topic.name),
-      colors.yellow.bold(topic.category),
+      chalk.cyan(topic.name),
+      chalk.yellow(topic.category),
       topic.description
     ]);
   }
   
-  table.render();
+  console.log(table.toString());
   
   console.log();
-  console.log(colors.gray('Use "claude-flow help <topic>" for detailed information.'));
+  console.log(chalk.gray('Use "claude-flow help <topic>" for detailed information.'));
 }
 
-async function showTopicHelp(topicName: string, options: { examples?: boolean; tutorial?: boolean }): Promise<void> {
+async function showTopicHelp(topicName: string, options: any): Promise<void> {
   const topic = HELP_TOPICS.find(t => t.name === topicName);
   
   if (!topic) {
-    console.log(colors.red(`Help topic '${topicName}' not found.`));
+    console.log(chalk.red(`Help topic '${topicName}' not found.`));
     console.log();
     
     // Suggest similar topics
@@ -1297,44 +687,44 @@ async function showTopicHelp(topicName: string, options: { examples?: boolean; t
     );
     
     if (similar.length > 0) {
-      console.log(colors.gray('Did you mean:'));
+      console.log(chalk.gray('Did you mean:'));
       for (const suggestion of similar) {
-        console.log(colors.cyan(`  ${suggestion.name}`));
+        console.log(chalk.cyan(`  ${suggestion.name}`));
       }
     } else {
-      console.log(colors.gray('Use "claude-flow help --all" to see all topics.'));
+      console.log(chalk.gray('Use "claude-flow help --all" to see all topics.'));
     }
     return;
   }
   
-  console.log(colors.cyan.bold(`Help: ${topic.name}`));
+  console.log(chalk.cyan.bold(`Help: ${topic.name}`));
   console.log('─'.repeat(50));
-  console.log(colors.white(topic.description));
+  console.log(chalk.white(topic.description));
   console.log();
   
   if (options.tutorial && topic.tutorial) {
-    console.log(colors.yellow.bold('Tutorial:'));
+    console.log(chalk.yellow.bold('Tutorial:'));
     console.log('─'.repeat(20));
     for (const line of topic.tutorial) {
       if (line.trim().startsWith('claude-flow')) {
-        console.log(colors.cyan(`  ${line}`));
+        console.log(chalk.cyan(`  ${line}`));
       } else if (line.trim() === '') {
         console.log();
       } else {
-        console.log(colors.white(line));
+        console.log(chalk.white(line));
       }
     }
     console.log();
   }
   
   if (options.examples && topic.examples) {
-    console.log(colors.yellow.bold('Examples:'));
+    console.log(chalk.yellow.bold('Examples:'));
     console.log('─'.repeat(20));
     for (const example of topic.examples) {
-      console.log(colors.white.bold(`${example.description}:`));
-      console.log(colors.cyan(`  ${example.command}`));
+      console.log(chalk.white.bold(`${example.description}:`));
+      console.log(chalk.cyan(`  ${example.command}`));
       if (example.explanation) {
-        console.log(colors.gray(`  ${example.explanation}`));
+        console.log(chalk.gray(`  ${example.explanation}`));
       }
       console.log();
     }
@@ -1343,109 +733,98 @@ async function showTopicHelp(topicName: string, options: { examples?: boolean; t
   if (!options.examples && !options.tutorial) {
     // Show both by default
     if (topic.tutorial) {
-      console.log(colors.yellow.bold('Overview:'));
+      console.log(chalk.yellow.bold('Overview:'));
       console.log('─'.repeat(20));
       const overview = topic.tutorial.slice(0, 5);
       for (const line of overview) {
         if (line.trim() === '') {
           console.log();
         } else {
-          console.log(colors.white(line));
+          console.log(chalk.white(line));
         }
       }
       console.log();
-      console.log(colors.gray('Use --tutorial for complete tutorial.'));
+      console.log(chalk.gray('Use --tutorial for complete tutorial.'));
       console.log();
     }
     
     if (topic.examples) {
-      console.log(colors.yellow.bold('Common Examples:'));
+      console.log(chalk.yellow.bold('Common Examples:'));
       console.log('─'.repeat(20));
       const commonExamples = topic.examples.slice(0, 3);
       for (const example of commonExamples) {
-        console.log(colors.cyan(`  ${example.command}`));
-        console.log(colors.gray(`    ${example.description}`));
+        console.log(chalk.cyan(`  ${example.command}`));
+        console.log(chalk.gray(`    ${example.description}`));
       }
       if (topic.examples.length > 3) {
-        console.log(colors.gray(`    ... and ${topic.examples.length - 3} more`));
+        console.log(chalk.gray(`    ... and ${topic.examples.length - 3} more`));
       }
       console.log();
-      console.log(colors.gray('Use --examples for all examples.'));
+      console.log(chalk.gray('Use --examples for all examples.'));
       console.log();
     }
   }
   
   if (topic.related && topic.related.length > 0) {
-    console.log(colors.yellow.bold('Related Topics:'));
+    console.log(chalk.yellow.bold('Related Topics:'));
     console.log('─'.repeat(20));
     for (const related of topic.related) {
-      console.log(colors.cyan(`  claude-flow help ${related}`));
+      console.log(chalk.cyan(`  claude-flow help ${related}`));
     }
     console.log();
   }
 }
 
 async function startInteractiveHelp(): Promise<void> {
-  try {
-    console.log(colors.cyan.bold('Interactive Help Mode'));
-    console.log('─'.repeat(30));
+  console.log(chalk.cyan.bold('Interactive Help Mode'));
+  console.log('─'.repeat(30));
+  console.log();
+  
+  while (true) {
+    const categories = [
+      { name: 'Getting Started', value: 'getting-started' },
+      { name: 'Agents', value: 'agents' },
+      { name: 'Tasks', value: 'tasks' },
+      { name: 'Workflows', value: 'workflows' },
+      { name: 'Configuration', value: 'configuration' },
+      { name: 'Monitoring', value: 'monitoring' },
+      { name: 'Sessions', value: 'sessions' },
+      { name: 'REPL Mode', value: 'repl' },
+      { name: 'Troubleshooting', value: 'troubleshooting' },
+      { name: 'Browse All Topics', value: 'all' },
+      { name: 'Exit', value: 'exit' }
+    ];
+    
+    const result = await inquirer.prompt([{
+      type: 'list',
+      name: 'choice',
+      message: 'What would you like help with?',
+      choices: categories,
+    }]);
+    
+    const choice = result.choice;
+    
+    if (choice === 'exit') {
+      console.log(chalk.gray('Goodbye!'));
+      break;
+    }
+    
     console.log();
     
-    while (true) {
-      const categories = [
-        { name: 'Getting Started', value: 'getting-started' },
-        { name: 'Agents', value: 'agents' },
-        { name: 'Tasks', value: 'tasks' },
-        { name: 'Workflows', value: 'workflows' },
-        { name: 'Configuration', value: 'configuration' },
-        { name: 'Monitoring', value: 'monitoring' },
-        { name: 'Sessions', value: 'sessions' },
-        { name: 'REPL Mode', value: 'repl' },
-        { name: 'Troubleshooting', value: 'troubleshooting' },
-        { name: 'Browse All Topics', value: 'all' },
-        { name: 'Exit', value: 'exit' }
-      ];
-      
-      const choice = await HelpSelect.prompt<string>({
-        message: 'What would you like help with?',
-        options: categories,
-      });
-      
-      if (choice === 'exit') {
-        console.log(colors.gray('Goodbye!'));
-        break;
-      }
-      
-      console.log();
-      
-      if (choice === 'all') {
-        showAllTopics();
-      } else {
-        await showTopicHelp(choice, { tutorial: true, examples: true });
-      }
-      
-      console.log();
-      console.log(colors.gray('Press Enter to continue...'));
-      await new Promise<void>(resolve => {
-        const stdin = stdio.stdin;
-        if (typeof stdin.read === 'function') {
-          // Deno-style API
-          const buffer = new Uint8Array(1);
-          stdin.read(buffer).then(() => resolve());
-        } else if (typeof stdin.once === 'function') {
-          // Node.js-style API
-          stdin.once('data', () => resolve());
-          stdin.resume();
-        } else {
-          // Fallback - just wait a bit
-          setTimeout(() => resolve(), 100);
-        }
-      });
-      
-      console_.clear();
+    if (choice === 'all') {
+      showAllTopics();
+    } else {
+      await showTopicHelp(choice, { tutorial: true, examples: true });
     }
-  } catch (error) {
-    console.error(colors.red('Error in interactive help:'), error instanceof Error ? error.message : String(error));
-    throw error;
+    
+    console.log();
+    console.log(chalk.gray('Press Enter to continue...'));
+    await new Promise(resolve => {
+      const stdin = Deno.stdin;
+      const buffer = new Uint8Array(1);
+      stdin.read(buffer).then(() => resolve(undefined));
+    });
+    
+    console.clear();
   }
 }

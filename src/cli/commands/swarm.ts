@@ -1,17 +1,15 @@
+import { getErrorMessage } from '../../utils/error-handler.js';
 /**
  * Claude Swarm Mode - Self-orchestrating agent swarms using claude-flow
  */
 
 import { generateId } from '../../utils/helpers.js';
-import { success, error, warning, info } from "../cli-core.js";
+import { promises as fs } from 'node:fs';
+import { success, error, warning, info } from '../cli-core.js';
 import type { CommandContext } from "../cli-core.js";
-import { SwarmCoordinator } from '../../coordination/swarm-coordinator.js';
 import { BackgroundExecutor } from '../../coordination/background-executor.js';
+import { SwarmCoordinator } from '../../coordination/swarm-coordinator.js';
 import { SwarmMemoryManager } from '../../memory/swarm-memory.js';
-import { fs, processInfo } from '../../utils/runtime.js';
-import { spawn } from 'node:child_process';
-import { chmod } from 'node:fs/promises';
-
 export async function swarmAction(ctx: CommandContext) {
   // First check if help is requested
   if (ctx.flags.help || ctx.flags.h) {
@@ -98,13 +96,15 @@ export async function swarmAction(ctx: CommandContext) {
       }
       
       if (options.ui) {
-        const process = spawn('node', [uiScriptPath], {
-          stdio: 'inherit',
+        const command = new Deno.Command('node', {
+          args: [uiScriptPath],
+          stdin: 'inherit',
+          stdout: 'inherit',
+          stderr: 'inherit',
         });
         
-        const code = await new Promise((resolve) => {
-          process.on('exit', (code) => resolve(code));
-        });
+        const process = command.spawn();
+        const { code } = await process.status;
         
         if (code !== 0) {
           error(`Swarm UI exited with code ${code}`);
@@ -132,15 +132,7 @@ export async function swarmAction(ctx: CommandContext) {
       enableWorkStealing: options.parallel,
       enableCircuitBreaker: true,
       memoryNamespace: options.memoryNamespace,
-      coordinationStrategy: {
-        name: options.distributed ? 'distributed' : 'centralized',
-        description: options.distributed ? 'Distributed coordination strategy' : 'Centralized coordination strategy',
-        agentSelection: 'round-robin',
-        taskScheduling: 'priority',
-        loadBalancing: 'even',
-        faultTolerance: 'retry',
-        communication: 'direct'
-      }
+      coordinationStrategy: options.distributed ? 'distributed' : 'centralized'
     });
 
     // Initialize background executor
@@ -166,10 +158,10 @@ export async function swarmAction(ctx: CommandContext) {
 
     // Create swarm tracking directory
     const swarmDir = `./swarm-runs/${swarmId}`;
-    await fs.mkdir(swarmDir, { recursive: true });
+    await Deno.mkdir(swarmDir, { recursive: true });
 
     // Create objective in coordinator
-    const objectiveId = await coordinator.createObjective(objective, options.strategy as 'auto' | 'research' | 'development' | 'analysis');
+    const objectiveId = await coordinator.createObjective(objective, options.strategy);
     
     console.log(`\n📝 Objective created with ID: ${objectiveId}`);
 
@@ -189,7 +181,7 @@ export async function swarmAction(ctx: CommandContext) {
     }
 
     // Write swarm configuration
-    await fs.writeTextFile(`${swarmDir}/config.json`, JSON.stringify({
+    await fs.writeFile(`${swarmDir}/config.json`, JSON.stringify({
       swarmId,
       objectiveId,
       objective,
@@ -206,9 +198,9 @@ export async function swarmAction(ctx: CommandContext) {
       console.log(`Running in background mode. Check status with: claude-flow swarm status ${swarmId}`);
       
       // Save coordinator state and exit
-      await fs.writeTextFile(`${swarmDir}/coordinator.json`, JSON.stringify({
+      await fs.writeFile(`${swarmDir}/coordinator.json`, JSON.stringify({
         coordinatorRunning: true,
-        pid: processInfo.pid,
+        pid: Deno.pid,
         startTime: new Date().toISOString()
       }, null, 2));
       
@@ -217,7 +209,7 @@ export async function swarmAction(ctx: CommandContext) {
       await waitForObjectiveCompletion(coordinator, objectiveId, options);
       
       // Write completion status
-      await fs.writeTextFile(`${swarmDir}/status.json`, JSON.stringify({
+      await fs.writeFile(`${swarmDir}/status.json`, JSON.stringify({
         status: 'completed',
         endTime: new Date().toISOString()
       }, null, 2));
@@ -314,10 +306,10 @@ async function executeParallelTasks(tasks: any[], options: any, swarmId: string,
     
     // Create agent directory
     const agentDir = `${swarmDir}/agents/${agentId}`;
-    await fs.mkdir(agentDir, { recursive: true });
+    await Deno.mkdir(agentDir, { recursive: true });
     
     // Write agent task
-    await fs.writeTextFile(`${agentDir}/task.json`, JSON.stringify({
+    await fs.writeFile(`${agentDir}/task.json`, JSON.stringify({
       agentId,
       swarmId,
       task,
@@ -329,7 +321,7 @@ async function executeParallelTasks(tasks: any[], options: any, swarmId: string,
     await executeAgentTask(agentId, task, options, agentDir);
     
     // Update status
-    await fs.writeTextFile(`${agentDir}/status.json`, JSON.stringify({
+    await fs.writeFile(`${agentDir}/status.json`, JSON.stringify({
       status: 'completed',
       endTime: new Date().toISOString()
     }, null, 2));
@@ -350,10 +342,10 @@ async function executeSequentialTasks(tasks: any[], options: any, swarmId: strin
     
     // Create agent directory
     const agentDir = `${swarmDir}/agents/${agentId}`;
-    await fs.mkdir(agentDir, { recursive: true });
+    await Deno.mkdir(agentDir, { recursive: true });
     
     // Write agent task
-    await fs.writeTextFile(`${agentDir}/task.json`, JSON.stringify({
+    await fs.writeFile(`${agentDir}/task.json`, JSON.stringify({
       agentId,
       swarmId,
       task,
@@ -365,7 +357,7 @@ async function executeSequentialTasks(tasks: any[], options: any, swarmId: strin
     await executeAgentTask(agentId, task, options, agentDir);
     
     // Update status
-    await fs.writeTextFile(`${agentDir}/status.json`, JSON.stringify({
+    await fs.writeFile(`${agentDir}/status.json`, JSON.stringify({
       status: 'completed',
       endTime: new Date().toISOString()
     }, null, 2));
@@ -382,12 +374,10 @@ async function executeAgentTask(agentId: string, task: any, options: any, agentD
   
   try {
     // Check if claude CLI is available and not in simulation mode
-    const checkClaude = spawn('which', ['claude'], { stdio: 'pipe' });
-    const claudeAvailable = await new Promise((resolve) => {
-      checkClaude.on('exit', (code) => resolve(code === 0));
-    });
+    const checkClaude = new Deno.Command('which', { args: ['claude'] });
+    const checkResult = await checkClaude.output();
     
-    if (claudeAvailable && options.simulate !== true) {
+    if (checkResult.success && options.simulate !== true) {
       // Write prompt to a file for claude to read
       const promptFile = `${agentDir}/prompt.txt`;
       const prompt = `You are an AI agent with ID: ${agentId}
@@ -404,7 +394,7 @@ Provide your output in a structured format.
 
 When you're done, please end with "TASK COMPLETED" on its own line.`;
 
-      await fs.writeTextFile(promptFile, prompt);
+      await fs.writeFile(promptFile, prompt);
       
       // Build claude command using bash to pipe the prompt
       let tools = 'View,GlobTool,GrepTool,LS';
@@ -423,7 +413,7 @@ When you're done, please end with "TASK COMPLETED" on its own line.`;
       ];
       
       // Write command to file for tracking
-      await fs.writeTextFile(`${agentDir}/command.txt`, `claude ${claudeArgs.join(' ')}`);
+      await fs.writeFile(`${agentDir}/command.txt`, `claude ${claudeArgs.join(' ')}`);
       
       console.log(`    → Running: ${task.description}`);
       
@@ -436,20 +426,20 @@ claude ${claudeArgs.map(arg => `"${arg}"`).join(' ')} | tee "${agentDir}/output.
 exit \${PIPESTATUS[0]}`;
       
       const wrapperPath = `${agentDir}/wrapper.sh`;
-      await fs.writeTextFile(wrapperPath, wrapperScript);
-      await chmod(wrapperPath, 0o755);
+      await fs.writeFile(wrapperPath, wrapperScript);
+      await Deno.chmod(wrapperPath, 0o755);
       
       console.log(`    ┌─ Claude Output ─────────────────────────────`);
       
-      const command = spawn('bash', [wrapperPath], {
-        stdio: 'inherit'  // This allows real-time streaming to console
+      const command = new Deno.Command('bash', {
+        args: [wrapperPath],
+        stdout: 'inherit',  // This allows real-time streaming to console
+        stderr: 'inherit',
       });
       
       try {
-        const code = await new Promise((resolve) => {
-          command.on('exit', (code) => resolve(code));
-        });
-        const success = code === 0;
+        const process = command.spawn();
+        const { code, success } = await process.status;
         
         console.log(`    └─────────────────────────────────────────────`);
         
@@ -485,29 +475,18 @@ exit \${PIPESTATUS[0]}`;
       const claudeFlowBin = `${projectRoot}/bin/claude-flow`;
       
       // Execute claude-flow command
-      const command = spawn(claudeFlowBin, claudeFlowArgs, {
-        stdio: 'pipe'
+      const command = new Deno.Command(claudeFlowBin, {
+        args: claudeFlowArgs,
+        stdout: 'piped',
+        stderr: 'piped',
       });
       
-      let stdout = '';
-      let stderr = '';
-      
-      command.stdout?.on('data', (data) => {
-        stdout += data.toString();
-      });
-      
-      command.stderr?.on('data', (data) => {
-        stderr += data.toString();
-      });
-      
-      const code = await new Promise((resolve) => {
-        command.on('exit', (code) => resolve(code));
-      });
+      const { code, stdout, stderr } = await command.output();
       
       // Save output
-      await fs.writeTextFile(`${agentDir}/output.txt`, stdout);
+      await fs.writeFile(`${agentDir}/output.txt`, new TextDecoder().decode(stdout));
       if (stderr.length > 0) {
-        await fs.writeTextFile(`${agentDir}/error.txt`, stderr);
+        await fs.writeFile(`${agentDir}/error.txt`, new TextDecoder().decode(stderr));
       }
       
       if (code !== 0) {
@@ -517,20 +496,20 @@ exit \${PIPESTATUS[0]}`;
   } catch (err) {
     // Log error but continue
     console.log(`    ⚠️  Error executing task: ${(err as Error).message}`);
-    await fs.writeTextFile(`${agentDir}/error.txt`, (err as Error).message);
+    await fs.writeFile(`${agentDir}/error.txt`, (err as Error).message);
   }
 }
 
-function getAgentTypesForStrategy(strategy: string): ('researcher' | 'developer' | 'analyzer' | 'coordinator' | 'reviewer')[] {
+function getAgentTypesForStrategy(strategy: string): ('researcher' | 'coder' | 'analyst' | 'coordinator' | 'reviewer')[] {
   switch (strategy) {
     case 'research':
-      return ['researcher', 'analyzer', 'coordinator'];
+      return ['researcher', 'analyst', 'coordinator'];
     case 'development':
-      return ['developer', 'analyzer', 'reviewer', 'coordinator'];
+      return ['coder', 'analyst', 'reviewer', 'coordinator'];
     case 'analysis':
-      return ['analyzer', 'researcher', 'coordinator'];
+      return ['analyst', 'researcher', 'coordinator'];
     default: // auto
-      return ['coordinator', 'researcher', 'developer', 'analyzer'];
+      return ['coordinator', 'researcher', 'coder', 'analyst'];
   }
 }
 
@@ -538,9 +517,9 @@ function getCapabilitiesForType(type: string): string[] {
   switch (type) {
     case 'researcher':
       return ['web-search', 'data-collection', 'analysis', 'documentation'];
-    case 'developer':
+    case 'coder':
       return ['coding', 'testing', 'debugging', 'architecture'];
-    case 'analyzer':
+    case 'analyst':
       return ['data-analysis', 'visualization', 'reporting', 'insights'];
     case 'reviewer':
       return ['code-review', 'quality-assurance', 'validation', 'testing'];

@@ -1,9 +1,10 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * SPARC-Enhanced Task Executor for Swarm
  * Implements the full SPARC methodology with TDD
  */
 
-import { TaskDefinition, AgentState, TaskResult } from './types.js';
+import type { TaskDefinition, AgentState, TaskResult } from './types.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Logger } from '../core/logger.js';
@@ -26,7 +27,7 @@ export class SparcTaskExecutor {
   private enableTDD: boolean;
   private qualityThreshold: number;
   private enableMemory: boolean;
-  private phases!: Map<string, SparcPhase>;
+  private phases: Map<string, SparcPhase>;
 
   constructor(config: SparcExecutorConfig = {}) {
     this.logger = config.logger || new Logger(
@@ -122,7 +123,7 @@ export class SparcTaskExecutor {
     } catch (error) {
       this.logger.error('SPARC task execution failed', {
         taskId: task.id.id,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
       throw error;
     }
@@ -137,7 +138,7 @@ export class SparcTaskExecutor {
     
     // Map agent types to SPARC phases
     switch (agent.type) {
-      case 'analyzer':
+      case 'analyst':
         if (task.name.includes('Requirements') || task.name.includes('Plan')) {
           return this.executeSpecificationPhase(task, targetDir);
         }
@@ -146,14 +147,14 @@ export class SparcTaskExecutor {
       case 'researcher':
         return this.executePseudocodePhase(task, targetDir);
       
-      case 'specialist':
+      case 'architect':
       case 'coordinator':
         if (task.name.includes('Architecture') || objective.includes('design')) {
           return this.executeArchitecturePhase(task, targetDir);
         }
         return this.executeCoordinationPhase(task, targetDir);
       
-      case 'developer':
+      case 'coder':
         if (this.enableTDD && task.name.includes('Implement')) {
           return this.executeTDDPhase(task, targetDir);
         }
@@ -458,7 +459,7 @@ export class SparcTaskExecutor {
       ]
     };
     
-    return (stories as any)[appType] || [
+    return stories[appType] || [
       { id: 'US001', story: 'As a user, I want to use the main functionality', priority: 'high' }
     ];
   }
@@ -477,7 +478,7 @@ export class SparcTaskExecutor {
       }
     };
     
-    return (criteria as any)[appType] || {
+    return criteria[appType] || {
       functionality: ['Core features work as expected'],
       quality: ['Code follows best practices']
     };
@@ -562,7 +563,7 @@ export class SparcTaskExecutor {
       typescript: 'jest',
       java: 'junit'
     };
-    return (frameworks as any)[language] || 'generic';
+    return frameworks[language] || 'generic';
   }
 
   private getProjectStructure(appType: string, language: string): any {
@@ -577,7 +578,7 @@ export class SparcTaskExecutor {
       }
     };
     
-    return (structures as any)[`${language}-${appType}`] || {
+    return structures[`${language}-${appType}`] || {
       directories: ['src', 'tests', 'docs'],
       files: ['README.md', '.gitignore']
     };
@@ -603,7 +604,7 @@ export class SparcTaskExecutor {
       typescript: 'ts',
       java: 'java'
     };
-    return `${name}.${(extensions as any)[language] || 'js'}`;
+    return `${name}.${extensions[language] || 'js'}`;
   }
 
   // Content generation methods
@@ -633,7 +634,7 @@ export class SparcTaskExecutor {
       ]
     };
     
-    return (requirements as any)[appType] || ['Implement core functionality'];
+    return requirements[appType] || ['Implement core functionality'];
   }
 
   private getNonFunctionalRequirements(appType: string): string[] {
@@ -664,7 +665,7 @@ export class SparcTaskExecutor {
       ]
     };
     
-    return (tech as any)[appType] || ['Follow best practices for the technology stack'];
+    return tech[appType] || ['Follow best practices for the technology stack'];
   }
 
   private getBusinessRequirements(appType: string): string[] {

@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * Migration Analyzer - Analyzes existing projects for migration readiness
  */
@@ -5,9 +6,10 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { MigrationAnalysis, MigrationRisk } from './types';
-import { logger } from './logger';
-import chalk from 'chalk';
+import type { MigrationAnalysis, MigrationRisk } from './types.js';
+import { logger } from './logger.js';
+import * as chalk from 'chalk';
+import { glob } from 'glob';
 
 export class MigrationAnalyzer {
   private optimizedCommands = [
@@ -59,21 +61,14 @@ export class MigrationAnalyzer {
     const commandsPath = path.join(claudePath, 'commands');
     
     if (await fs.pathExists(commandsPath)) {
-      try {
-        const files = await fs.readdir(commandsPath);
-        const mdFiles = files.filter(file => file.endsWith('.md'));
+      const files = await glob('**/*.md', { cwd: commandsPath });
+      
+      for (const file of files) {
+        const commandName = path.basename(file, '.md');
         
-        for (const file of mdFiles) {
-          const commandName = path.basename(file, '.md');
-          
-          if (!this.optimizedCommands.includes(commandName)) {
-            analysis.customCommands.push(commandName);
-          }
+        if (!this.optimizedCommands.includes(commandName)) {
+          analysis.customCommands.push(commandName);
         }
-      } catch (error) {
-        // Directory might not exist or be readable
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.debug(`Could not read commands directory: ${errorMessage}`);
       }
     }
   }

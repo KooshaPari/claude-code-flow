@@ -1,9 +1,37 @@
-/// <reference path="./deno.d.ts" />
-/// <reference path="./@cliffy/command.d.ts" />
-/// <reference path="./@cliffy/table.d.ts" />
-/// <reference path="./@cliffy/ansi.d.ts" />
-/// <reference path="./@cliffy/prompt.d.ts" />
-/// <reference path="./vscode.d.ts" />
-/// <reference path="./p-queue.d.ts" />
+import { getErrorMessage } from '../utils/error-handler.js';
+// Global type definitions and environment compatibility
 
-// Global type declarations
+// Node.js global augmentations
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      NODE_ENV?: 'development' | 'production' | 'test';
+      DEBUG?: string;
+      CLAUDE_FLOW_HOME?: string;
+      [key: string]: string | undefined;
+    }
+  }
+}
+
+// Deno compatibility shims (when running in Node)
+declare global {
+  var Deno: any | undefined;
+}
+
+// Commander.js types extension
+import type { Command as CommanderCommand } from 'commander';
+
+declare module 'commander' {
+  interface Command {
+    showHelp(): void;
+  }
+}
+
+// Table types
+declare module 'cli-table3' {
+  interface Table {
+    push(...rows: any[]): void;
+  }
+}
+
+export {};

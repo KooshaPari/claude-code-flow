@@ -1,7 +1,8 @@
+import { getErrorMessage } from '../../utils/error-handler.js';
 import { success, error, warning, info } from "../cli-core.js";
 import type { CommandContext } from "../cli-core.js";
-import colors from "chalk";
-const { blue, yellow, green, magenta, cyan } = colors;
+import chalk from "chalk";
+const { blue, yellow, green, magenta, cyan } = chalk;
 
 interface SparcMode {
   slug: string;
@@ -30,7 +31,7 @@ async function loadSparcConfig(): Promise<SparcConfig> {
     sparcConfig = JSON.parse(content);
     return sparcConfig!;
   } catch (error) {
-    throw new Error(`Failed to load SPARC configuration: ${(error as Error).message}`);
+    throw new Error(`Failed to load SPARC configuration: ${(error instanceof Error ? error.message : String(error))}`);
   }
 }
 
@@ -468,17 +469,16 @@ async function executeClaudeWithSparc(
       stdio: "inherit",
     });
 
-    const status = await new Promise((resolve) => {
+    const status = await new Promise<{ success: boolean; code: number | null }>((resolve) => {
       child.on("close", (code) => {
         resolve({ success: code === 0, code });
       });
     });
 
-    const statusObj = status as { success: boolean; code?: number };
-    if (statusObj.success) {
+    if ((status as any).success) {
       success(`SPARC instance ${instanceId} completed successfully`);
     } else {
-      error(`SPARC instance ${instanceId} exited with code ${statusObj.code}`);
+      error(`SPARC instance ${instanceId} exited with code ${(status as any).code}`);
     }
   } catch (err) {
     error(`Failed to execute Claude: ${(err as Error).message}`);

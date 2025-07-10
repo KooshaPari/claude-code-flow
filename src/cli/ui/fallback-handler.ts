@@ -1,10 +1,11 @@
+import { getErrorMessage } from '../../utils/type-guards.js';
 /**
  * Fallback UI Handler - Handles raw mode errors gracefully
  * Provides alternative UI when Ink/raw mode isn't supported
  */
 
 import chalk from 'chalk';
-import { createCompatibleUI, launchUI as launchCompatibleUI } from './compatible-ui.js';
+import { createCompatibleUI } from './compatible-ui.js';
 
 export interface FallbackOptions {
   enableUI?: boolean;
@@ -19,9 +20,9 @@ export async function handleRawModeError(
   error: Error, 
   options: FallbackOptions = {}
 ): Promise<void> {
-  const isRawModeError = error.message.includes('Raw mode is not supported') || 
-                        error.message.includes('stdin') ||
-                        error.message.includes('Ink');
+  const isRawModeError = (error instanceof Error ? error.message : String(error)).includes('Raw mode is not supported') || 
+                        (error instanceof Error ? error.message : String(error)).includes('stdin') ||
+                        (error instanceof Error ? error.message : String(error)).includes('Ink');
 
   if (!isRawModeError) {
     throw error; // Re-throw if it's not a raw mode error
@@ -35,6 +36,8 @@ export async function handleRawModeError(
   console.log();
   console.log(chalk.cyan('Common causes:'));
   console.log(chalk.gray('• VS Code integrated terminal'));
+  console.log(chalk.gray('• WSL (Windows Subsystem for Linux)'));
+  console.log(chalk.gray('• Native Windows terminals'));
   console.log(chalk.gray('• CI/CD environments'));
   console.log(chalk.gray('• Docker containers'));
   console.log(chalk.gray('• SSH sessions without TTY'));
@@ -53,8 +56,7 @@ export async function handleRawModeError(
       const ui = createCompatibleUI();
       await ui.start();
     } catch (fallbackError) {
-      const errorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-      console.log(chalk.red('❌ Fallback UI also failed:'), errorMessage);
+      console.log(chalk.red('❌ Fallback UI also failed:'), getErrorMessage(fallbackError));
       await showBasicInterface(options);
     }
   } else {
@@ -192,30 +194,4 @@ export function showUISupport(): void {
   console.log(chalk.gray(`• TTY: ${process.stdin.isTTY ? 'yes' : 'no'}`));
   console.log(chalk.gray(`• Program: ${process.env.TERM_PROGRAM || 'unknown'}`));
   console.log(chalk.gray(`• Platform: ${process.platform}`));
-}
-
-/**
- * Launch UI with fallback handling
- */
-export async function launchUI(): Promise<void> {
-  const support = checkUISupport();
-  
-  if (support.supported) {
-    try {
-      await launchCompatibleUI();
-    } catch (error) {
-      if (error instanceof Error) {
-        await handleRawModeError(error, { 
-          enableUI: true,
-          fallbackMessage: 'Falling back to basic compatible UI mode',
-          showHelp: true 
-        });
-      }
-    }
-  } else {
-    console.log(chalk.yellow('⚠️  Using compatible UI mode due to terminal limitations'));
-    console.log(chalk.gray(`Reason: ${support.reason}`));
-    console.log();
-    await launchCompatibleUI();
-  }
 }

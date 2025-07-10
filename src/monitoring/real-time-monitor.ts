@@ -1,11 +1,12 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * Real-time monitoring system for swarm operations
  */
 
 import { EventEmitter } from 'node:events';
-import { ILogger } from '../core/logger.js';
-import { IEventBus } from '../core/event-bus.js';
-import { 
+import type { ILogger } from '../core/logger.js';
+import type { IEventBus } from '../core/event-bus.js';
+import type { 
   SystemMetrics, 
   Alert, 
   AlertLevel, 
@@ -15,7 +16,7 @@ import {
   SwarmMetrics,
   AgentId
 } from '../swarm/types.js';
-import { DistributedMemorySystem } from '../memory/distributed-memory.js';
+import type { DistributedMemorySystem } from '../memory/distributed-memory.js';
 
 export interface MonitorConfig {
   updateInterval: number;
@@ -197,38 +198,38 @@ export class RealTimeMonitor extends EventEmitter {
   private setupEventHandlers(): void {
     // Agent events
     this.eventBus.on('agent:metrics-update', (data) => {
-      this.updateAgentMetrics((data as any).agentId, (data as any).metrics);
+      this.updateAgentMetrics(data.agentId, data.metrics);
     });
 
     this.eventBus.on('agent:status-changed', (data) => {
       this.recordMetric('agent.status.change', 1, { 
-        agentId: (data as any).agentId, 
-        from: (data as any).from, 
-        to: (data as any).to 
+        agentId: data.agentId, 
+        from: data.from, 
+        to: data.to 
       });
     });
 
     // Task events
     this.eventBus.on('task:started', (data) => {
-      this.recordMetric('task.started', 1, { taskId: (data as any).taskId, agentId: (data as any).agentId });
+      this.recordMetric('task.started', 1, { taskId: data.taskId, agentId: data.agentId });
     });
 
     this.eventBus.on('task:completed', (data) => {
-      this.recordMetric('task.completed', 1, { taskId: (data as any).taskId });
-      this.recordMetric('task.duration', (data as any).duration, { taskId: (data as any).taskId });
+      this.recordMetric('task.completed', 1, { taskId: data.taskId });
+      this.recordMetric('task.duration', data.duration, { taskId: data.taskId });
     });
 
     this.eventBus.on('task:failed', (data) => {
-      this.recordMetric('task.failed', 1, { taskId: (data as any).taskId, error: (data as any).error });
+      this.recordMetric('task.failed', 1, { taskId: data.taskId, error: data.error });
     });
 
     // System events
     this.eventBus.on('system:resource-update', (data) => {
-      this.updateSystemMetrics(data as any);
+      this.updateSystemMetrics(data);
     });
 
     this.eventBus.on('swarm:metrics-update', (data) => {
-      this.updateSwarmMetrics((data as any).metrics);
+      this.updateSwarmMetrics(data.metrics);
     });
 
     // Error events
@@ -586,7 +587,7 @@ export class RealTimeMonitor extends EventEmitter {
       this.recordMetric(`healthcheck.${check.name}`, 0, {
         type: check.type,
         target: check.target,
-        error: error instanceof Error ? error.message : String(error)
+        error: (error instanceof Error ? error.message : String(error))
       });
     }
   }

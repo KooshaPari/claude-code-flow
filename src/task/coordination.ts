@@ -1,45 +1,14 @@
+import { getErrorMessage } from '../utils/error-handler.js';
 /**
  * Task Coordination Layer - Integrates with TodoWrite/TodoRead and Memory for orchestration
  * Provides seamless coordination between task management and Claude Code batch tools
  */
 
 import { EventEmitter } from 'events';
-import { TaskEngine, WorkflowTask, TaskExecution } from './engine.js';
+import type { TaskEngine, WorkflowTask, TaskExecution } from './engine.js';
+import type { TodoItem, MemoryEntry, CoordinationContext } from './types.js';
 import { generateId } from '../utils/helpers.js';
 import { TaskStatus, TaskMetrics, TaskLog } from '../utils/types.js';
-
-export interface TodoItem {
-  id: string;
-  content: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  priority: 'high' | 'medium' | 'low';
-  dependencies?: string[];
-  estimatedTime?: string;
-  assignedAgent?: string;
-  batchOptimized?: boolean;
-  parallelExecution?: boolean;
-  memoryKey?: string;
-  tags?: string[];
-  metadata?: Record<string, unknown>;
-}
-
-export interface MemoryEntry {
-  key: string;
-  value: any;
-  timestamp: Date;
-  namespace?: string;
-  tags?: string[];
-  expiresAt?: Date;
-}
-
-export interface CoordinationContext {
-  sessionId: string;
-  agentId?: string;
-  workflowId?: string;
-  batchId?: string;
-  parentTaskId?: string;
-  coordinationMode: 'centralized' | 'distributed' | 'hierarchical' | 'mesh' | 'hybrid';
-}
 
 export class TaskCoordinator extends EventEmitter {
   private todoItems = new Map<string, TodoItem>();
@@ -390,7 +359,7 @@ export class TaskCoordinator extends EventEmitter {
     // Execute operations in parallel by type
     const promises: Promise<void>[] = [];
 
-    for (const [type, ops] of groupedOps) {
+    for (const [type, ops] of Array.from(groupedOps.entries())) {
       promises.push(this.executeBatchOperationType(type, ops, batchId, results));
     }
 
@@ -551,7 +520,9 @@ export class TaskCoordinator extends EventEmitter {
             batchOptimized: true,
             parallelExecution: true,
             memoryKey: 'research_sources',
-            tags: ['research', 'information_gathering']
+            tags: ['research', 'information_gathering'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           },
           {
             id: generateId('todo'),
@@ -561,7 +532,9 @@ export class TaskCoordinator extends EventEmitter {
             dependencies: ['research_sources'],
             batchOptimized: true,
             memoryKey: 'research_analysis',
-            tags: ['research', 'analysis']
+            tags: ['research', 'analysis'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           }
         );
         break;
@@ -574,7 +547,9 @@ export class TaskCoordinator extends EventEmitter {
             status: 'pending',
             priority: 'high',
             memoryKey: 'system_architecture',
-            tags: ['development', 'architecture']
+            tags: ['development', 'architecture'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           },
           {
             id: generateId('todo'),
@@ -585,7 +560,9 @@ export class TaskCoordinator extends EventEmitter {
             batchOptimized: true,
             parallelExecution: true,
             memoryKey: 'core_implementation',
-            tags: ['development', 'implementation']
+            tags: ['development', 'implementation'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           },
           {
             id: generateId('todo'),
@@ -595,7 +572,9 @@ export class TaskCoordinator extends EventEmitter {
             dependencies: ['core_implementation'],
             batchOptimized: true,
             memoryKey: 'test_suite',
-            tags: ['development', 'testing']
+            tags: ['development', 'testing'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           }
         );
         break;
@@ -610,7 +589,9 @@ export class TaskCoordinator extends EventEmitter {
             batchOptimized: true,
             parallelExecution: true,
             memoryKey: 'analysis_data',
-            tags: ['analysis', 'data_collection']
+            tags: ['analysis', 'data_collection'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           },
           {
             id: generateId('todo'),
@@ -620,7 +601,9 @@ export class TaskCoordinator extends EventEmitter {
             dependencies: ['analysis_data'],
             batchOptimized: true,
             memoryKey: 'statistical_results',
-            tags: ['analysis', 'statistics']
+            tags: ['analysis', 'statistics'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           },
           {
             id: generateId('todo'),
@@ -629,7 +612,9 @@ export class TaskCoordinator extends EventEmitter {
             priority: 'medium',
             dependencies: ['statistical_results'],
             memoryKey: 'analysis_insights',
-            tags: ['analysis', 'reporting']
+            tags: ['analysis', 'reporting'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           }
         );
         break;
@@ -643,7 +628,9 @@ export class TaskCoordinator extends EventEmitter {
             status: 'pending',
             priority: 'high',
             memoryKey: 'requirements_analysis',
-            tags: ['generic', 'requirements']
+            tags: ['generic', 'requirements'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           },
           {
             id: generateId('todo'),
@@ -654,7 +641,9 @@ export class TaskCoordinator extends EventEmitter {
             batchOptimized: true,
             parallelExecution: true,
             memoryKey: 'main_execution',
-            tags: ['generic', 'execution']
+            tags: ['generic', 'execution'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           },
           {
             id: generateId('todo'),
@@ -663,7 +652,9 @@ export class TaskCoordinator extends EventEmitter {
             priority: 'medium',
             dependencies: ['main_execution'],
             memoryKey: 'validation_results',
-            tags: ['generic', 'validation']
+            tags: ['generic', 'validation'],
+            createdAt: new Date(),
+            updatedAt: new Date()
           }
         );
     }
@@ -689,8 +680,9 @@ export class TaskCoordinator extends EventEmitter {
     return await this.taskEngine.createTask(taskData);
   }
 
-  private priorityToNumber(priority: 'high' | 'medium' | 'low'): number {
+  private priorityToNumber(priority: 'high' | 'medium' | 'low' | 'critical'): number {
     switch (priority) {
+      case 'critical': return 90;
       case 'high': return 80;
       case 'medium': return 50;
       case 'low': return 20;
