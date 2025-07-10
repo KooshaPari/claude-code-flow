@@ -1,0 +1,16 @@
+{
+  "name": "Claude Flow Web UI",
+  "short_name": "Claude Flow",
+  "description": "AI-powered development workflow automation",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1419",
+  "theme_color": "#2196F3",
+  "icons": [
+    {
+      "src": "/static/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ]
+}

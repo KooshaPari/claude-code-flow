@@ -1,0 +1,223 @@
+# Claude Flow Production Docker Compose
+# Complete production-ready deployment with monitoring and persistence
+
+version: '3.8'
+
+services:
+  # Main Claude Flow Application
+  claude-flow:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: production
+    container_name: claude-flow-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8082:8082"
+    environment:
+      RUST_LOG: "info"
+      CLAUDE_FLOW_ENV: "production"
+      CLAUDE_FLOW_DB_URL: "sqlite:///app/data/claude-flow.db"
+      CLAUDE_FLOW_MCP_PORT: "8082"
+      CLAUDE_FLOW_METRICS_ENABLED: "true"
+      CLAUDE_FLOW_LOG_FORMAT: "json"
+    volumes:
+      - claude_data:/app/data
+      - claude_config:/app/config
+      - claude_logs:/var/log/claude-flow
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For container orchestration
+    networks:
+      - claude_network
+    depends_on:
+      - redis
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.claude-flow.rule=Host(`claude-flow.local`)"
+      - "traefik.http.services.claude-flow.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["/app/bin/health-check.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: claude-flow-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-claude-flow-redis}
+    volumes:
+      - redis_data:/data
+    networks:
+      - claude_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: claude-flow-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - claude_network
+    depends_on:
+      - node-exporter
+
+  # Grafana for monitoring dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: claude-flow-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-claude-flow-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - claude_network
+    depends_on:
+      - prometheus
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: claude-flow-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - claude_network
+
+  # Traefik reverse proxy (optional)
+  traefik:
+    image: traefik:v3.0
+    container_name: claude-flow-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8080"  # Traefik dashboard
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./ssl:/ssl
+    networks:
+      - claude_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.local`)"
+
+  # Backup service
+  backup:
+    image: alpine:3.18
+    container_name: claude-flow-backup
+    restart: "no"
+    volumes:
+      - claude_data:/data/claude_data:ro
+      - claude_config:/data/claude_config:ro
+      - ./backups:/backups
+    command: >
+      sh -c "
+        echo 'Starting backup process...'
+        tar -czf /backups/claude-flow-backup-$$(date +%Y%m%d_%H%M%S).tar.gz \
+          -C /data claude_data claude_config
+        echo 'Backup completed successfully'
+        find /backups -name '*.tar.gz' -mtime +7 -delete
+        echo 'Old backups cleaned up'
+      "
+    networks:
+      - claude_network
+
+  # Log aggregation with Fluent Bit
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: claude-flow-fluent-bit
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - claude_logs:/var/log/claude-flow:ro
+    networks:
+      - claude_network
+    depends_on:
+      - claude-flow
+
+volumes:
+  claude_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CLAUDE_DATA_PATH:-./data}
+  
+  claude_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CLAUDE_CONFIG_PATH:-./config}
+  
+  claude_logs:
+    driver: local
+  
+  redis_data:
+    driver: local
+  
+  prometheus_data:
+    driver: local
+  
+  grafana_data:
+    driver: local
+
+networks:
+  claude_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Production secrets (use Docker secrets in real deployment)
+secrets:
+  db_password:
+    external: true
+  redis_password:
+    external: true
+  grafana_password:
+    external: true

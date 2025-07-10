@@ -1,0 +1,127 @@
+# Claude Flow Production Dockerfile
+# Multi-stage build for optimized production deployment
+
+# Build stage
+FROM rust:1.75-alpine AS rust-builder
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache \
+    musl-dev \
+    pkgconfig \
+    openssl-dev \
+    sqlite-dev \
+    git
+
+# Copy Rust source
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+
+# Build optimized binary
+RUN cargo build --release --features "sqlite,terminal-ui,github,performance"
+
+# Go MCP service build stage
+FROM golang:1.21-alpine AS go-builder
+WORKDIR /go-app
+
+# Install Go dependencies
+RUN apk add --no-cache git
+
+# Copy Go MCP source
+COPY go-mcp/ ./
+
+# Build Go MCP service
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o claude-flow-mcp ./main.go
+
+# Node.js build stage for dependencies
+FROM node:20-alpine AS node-builder
+WORKDIR /node-app
+
+# Copy package files
+COPY package*.json ./
+COPY ruv-swarm/ ./ruv-swarm/
+
+# Install production dependencies
+RUN npm ci --only=production
+
+# Production runtime stage
+FROM alpine:3.18 AS production
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    sqlite \
+    nodejs \
+    npm \
+    curl \
+    jq \
+    git \
+    bash \
+    tzdata \
+    tini
+
+# Create app user for security
+RUN addgroup -g 1001 -S claude && \
+    adduser -S claude -u 1001 -G claude
+
+# Create necessary directories
+RUN mkdir -p /app/bin /app/data /app/config /app/logs /var/log/claude-flow && \
+    chown -R claude:claude /app /var/log/claude-flow
+
+# Copy binaries from build stages
+COPY --from=rust-builder --chown=claude:claude /app/target/release/claude-flow /app/bin/
+COPY --from=go-builder --chown=claude:claude /go-app/claude-flow-mcp /app/bin/
+COPY --from=node-builder --chown=claude:claude /node-app/node_modules /app/node_modules
+COPY --from=node-builder --chown=claude:claude /node-app/ruv-swarm /app/ruv-swarm
+
+# Copy configuration and scripts
+COPY --chown=claude:claude docker/production/ /app/config/
+COPY --chown=claude:claude scripts/production/ /app/scripts/
+
+# Set up health check endpoint script
+COPY --chown=claude:claude <<'EOF' /app/bin/health-check.sh
+#!/bin/bash
+set -e
+
+# Check main service
+if ! curl -f http://localhost:8080/health >/dev/null 2>&1; then
+    echo "Main service health check failed"
+    exit 1
+fi
+
+# Check MCP service
+if ! curl -f http://localhost:8082/api/mcp/health >/dev/null 2>&1; then
+    echo "MCP service health check failed"
+    exit 1
+fi
+
+echo "All services healthy"
+exit 0
+EOF
+
+RUN chmod +x /app/bin/health-check.sh
+
+# Set up environment
+ENV PATH="/app/bin:${PATH}" \
+    RUST_LOG="info" \
+    CLAUDE_FLOW_ENV="production" \
+    CLAUDE_FLOW_DATA_DIR="/app/data" \
+    CLAUDE_FLOW_CONFIG_DIR="/app/config" \
+    CLAUDE_FLOW_LOG_DIR="/var/log/claude-flow"
+
+# Expose ports
+EXPOSE 8080 8082
+
+# Switch to non-root user
+USER claude
+WORKDIR /app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /app/bin/health-check.sh
+
+# Use tini as init system
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start script with graceful shutdown
+CMD ["/app/scripts/start-production.sh"]

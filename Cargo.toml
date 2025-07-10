@@ -23,11 +23,12 @@ tokio = { version = "1.35", features = ["full"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
+# serde_yaml = "0.9"  # REPLACED: unmaintained yaml-rust dependency
+serde_yml = "0.0.10"  # SECURITY: Safe replacement for yaml-rust
 
 # Database and storage
-rusqlite = { version = "0.29", features = ["bundled"], optional = true }
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"], optional = true }
+# rusqlite = { version = "0.31", features = ["bundled"], optional = true }  # DISABLED: conflicts with SQLx libsqlite3-sys
+sqlx = { version = "0.8.1", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate"], optional = true }  # SECURITY: MySQL disabled to avoid RSA vulnerability
 
 # Logging and error handling
 tracing = "0.1"
@@ -42,7 +43,19 @@ libc = "0.2"
 # Networking and protocol handling
 tungstenite = "0.20"
 tokio-tungstenite = "0.20"
-uuid = { version = "1.6", features = ["v4"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# GitHub integration
+octocrab = { version = "0.32", optional = true }
+base64 = "0.21"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+rand = "0.8"
+dirs = "5.0"
+url = "2.4"
 
 # Configuration and file handling
 config = "0.13"
@@ -55,9 +68,18 @@ dashmap = { version = "5.5", optional = true }
 arc-swap = { version = "1.6", optional = true }
 parking_lot = { version = "0.12", optional = true }
 
+# Neural and AI features - DISABLED due to compatibility issues in production
+# candle-core = { version = "0.6", optional = true }
+# candle-nn = { version = "0.6", optional = true }
+# tokenizers = { version = "0.15", optional = true }
+
 # Terminal and UI
 crossterm = { version = "0.27", optional = true }
-ratatui = { version = "0.24", optional = true }
+ratatui = { version = "0.28", optional = true }
+tui-input = { version = "0.8", optional = true }
+unicode-width = { version = "0.1", optional = true }
+syntect = { version = "5.1", optional = true }
+notify = { version = "6.1", optional = true }
 
 [dev-dependencies]
 tempfile = "3.8"
@@ -65,10 +87,12 @@ test-case = "3.3"
 criterion = "0.5"
 
 [features]
-default = ["sqlite", "terminal-ui"]
-sqlite = ["rusqlite", "sqlx"]
-terminal-ui = ["crossterm", "ratatui"]
+default = ["sqlite", "terminal-ui", "github"]
+sqlite = ["sqlx"]  # Note: rusqlite conflicts with SQLx - using SQLx only for security
+terminal-ui = ["crossterm", "ratatui", "tui-input", "unicode-width", "syntect", "notify"]
 performance = ["parking_lot", "dashmap"]
+# neural = ["candle-core", "candle-nn", "tokenizers"]  # DISABLED for production
+github = ["octocrab"]
 
 [profile.release]
 lto = true

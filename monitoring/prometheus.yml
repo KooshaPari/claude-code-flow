@@ -1,0 +1,139 @@
+# Prometheus configuration for Claude Flow monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'claude-flow-production'
+    replica: 'prometheus-1'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+scrape_configs:
+  # Claude Flow main application metrics
+  - job_name: 'claude-flow'
+    static_configs:
+      - targets: ['claude-flow:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    scheme: http
+
+  # Claude Flow MCP service metrics
+  - job_name: 'claude-flow-mcp'
+    static_configs:
+      - targets: ['claude-flow:8082']
+    metrics_path: '/api/mcp/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    scheme: http
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Docker container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+
+  # Claude Flow custom business metrics
+  - job_name: 'claude-flow-business'
+    static_configs:
+      - targets: ['claude-flow:8080']
+    metrics_path: '/metrics/business'
+    scrape_interval: 60s
+    params:
+      format: ['prometheus']
+
+  # Health check endpoints
+  - job_name: 'claude-flow-health'
+    static_configs:
+      - targets: ['claude-flow:8080', 'claude-flow:8082']
+    metrics_path: '/health'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+# Recording rules for performance optimization
+recording_rules:
+  - name: claude_flow_performance
+    rules:
+      - record: claude_flow:request_rate_5m
+        expr: rate(claude_flow_requests_total[5m])
+      
+      - record: claude_flow:error_rate_5m
+        expr: rate(claude_flow_errors_total[5m]) / rate(claude_flow_requests_total[5m])
+      
+      - record: claude_flow:response_time_95p
+        expr: histogram_quantile(0.95, rate(claude_flow_request_duration_seconds_bucket[5m]))
+
+# Alerting rules
+alerting_rules:
+  - name: claude_flow_alerts
+    rules:
+      - alert: ClaudeFlowDown
+        expr: up{job="claude-flow"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Claude Flow service is down"
+          description: "Claude Flow has been down for more than 30 seconds"
+
+      - alert: HighErrorRate
+        expr: claude_flow:error_rate_5m > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} which is above the threshold of 0.1"
+
+      - alert: HighResponseTime
+        expr: claude_flow:response_time_95p > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s"
+
+      - alert: MemoryUsageHigh
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 90%"
+
+      - alert: DiskSpaceLow
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10%"

@@ -1,0 +1,95 @@
+[package]
+name = "claude-flow-engines"
+version = "2.0.0"
+edition = "2021"
+description = "High-performance Rust engines for Claude Flow Benchmark Suite"
+authors = ["Claude Code"]
+
+[lib]
+name = "claude_flow_engines"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-util = "0.7"
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# HTTP client for benchmarks
+reqwest = { version = "0.11", features = ["json", "stream"] }
+hyper = { version = "0.14", features = ["full"] }
+
+# Performance and metrics
+rayon = "1.8"
+crossbeam = "0.8"
+parking_lot = "0.12"
+dashmap = "5.5"
+
+# Math and statistics
+ndarray = "0.15"
+statrs = "0.16"
+nalgebra = "0.32"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Time and duration
+chrono = { version = "0.4", features = ["serde"] }
+instant = "0.1"
+
+# File I/O
+walkdir = "2.4"
+regex = "1.10"
+
+# Neural network support
+candle-core = "0.3"
+candle-nn = "0.3"
+candle-transformers = "0.3"
+
+# WebAssembly support
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+
+# Memory management
+jemallocator = "0.5"
+
+# Configuration
+config = "0.13"
+clap = { version = "4.4", features = ["derive"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = "0.3"
+console_error_panic_hook = "0.1"
+
+[features]
+default = ["ruv-optimizations", "neural-acceleration", "wasm-support"]
+ruv-optimizations = []
+neural-acceleration = ["candle-core", "candle-nn"]
+wasm-support = ["wasm-bindgen", "web-sys"]
+benchmark-suite = []
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.release.package."*"]
+opt-level = 3
+
+# Development profile for faster compilation
+[profile.dev]
+opt-level = 1
+debug = true

@@ -1,0 +1,162 @@
+{
+  "score": 100.0,
+  "max_score": 100,
+  "details": {
+    "language": "python",
+    "total_problems": 10,
+    "passed_problems": 10,
+    "pass_rate": 1.0,
+    "individual_results": [
+      {
+        "task_id": "HumanEval/0",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/1",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/2",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/3",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/4",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/5",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/6",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/7",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/8",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      },
+      {
+        "task_id": "HumanEval/9",
+        "passed": true,
+        "test_results": {
+          "all_passed": true,
+          "passed_tests": 3,
+          "total_tests": 3,
+          "individual_results": [
+            true,
+            true,
+            true
+          ]
+        },
+        "solution_length": 314
+      }
+    ]
+  }
+}

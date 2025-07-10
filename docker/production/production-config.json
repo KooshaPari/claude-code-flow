@@ -1,0 +1,179 @@
+{
+  "environment": "production",
+  "service": {
+    "name": "claude-flow",
+    "version": "2.0.0",
+    "description": "Claude Flow AI Orchestration Platform - Production"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "workers": 4,
+    "max_connections": 1000,
+    "timeout": 30,
+    "keepalive": 75
+  },
+  "mcp": {
+    "host": "0.0.0.0",
+    "port": 8082,
+    "max_connections": 100,
+    "timeout": 10,
+    "workers": 2
+  },
+  "database": {
+    "type": "sqlite",
+    "url": "sqlite:///app/data/claude-flow.db",
+    "pool_size": 10,
+    "timeout": 30,
+    "busy_timeout": 5000,
+    "journal_mode": "WAL",
+    "synchronous": "NORMAL",
+    "cache_size": 50000
+  },
+  "redis": {
+    "url": "redis://redis:6379",
+    "pool_size": 10,
+    "timeout": 5,
+    "db": 0,
+    "password": "${REDIS_PASSWORD}"
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "output": "both",
+    "file": "/var/log/claude-flow/claude-flow.log",
+    "max_size": "100MB",
+    "max_files": 10,
+    "compression": true,
+    "fields": {
+      "service": "claude-flow",
+      "environment": "production",
+      "version": "2.0.0"
+    }
+  },
+  "metrics": {
+    "enabled": true,
+    "endpoint": "/metrics",
+    "interval": 30,
+    "retention": "24h",
+    "collectors": [
+      "system",
+      "application", 
+      "business",
+      "performance"
+    ]
+  },
+  "health": {
+    "endpoint": "/health",
+    "timeout": 5,
+    "interval": 30,
+    "checks": [
+      "database",
+      "memory",
+      "disk",
+      "mcp_service",
+      "redis"
+    ],
+    "thresholds": {
+      "memory_usage": 90,
+      "disk_usage": 85,
+      "cpu_usage": 80,
+      "error_rate": 5.0
+    }
+  },
+  "security": {
+    "cors": {
+      "enabled": true,
+      "origins": ["*"],
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "headers": ["Content-Type", "Authorization"]
+    },
+    "rate_limit": {
+      "enabled": true,
+      "requests_per_minute": 100,
+      "burst": 200,
+      "strategy": "sliding_window"
+    },
+    "headers": {
+      "x_frame_options": "DENY",
+      "x_content_type_options": "nosniff",
+      "x_xss_protection": "1; mode=block",
+      "strict_transport_security": "max-age=31536000; includeSubDomains"
+    }
+  },
+  "performance": {
+    "compression": {
+      "enabled": true,
+      "algorithm": "gzip",
+      "level": 6,
+      "min_size": 1024
+    },
+    "caching": {
+      "enabled": true,
+      "default_ttl": 300,
+      "max_entries": 10000
+    },
+    "connection_pooling": {
+      "enabled": true,
+      "max_idle": 10,
+      "max_open": 100,
+      "max_lifetime": 3600
+    }
+  },
+  "features": {
+    "swarm_orchestration": true,
+    "neural_processing": true,
+    "memory_management": true,
+    "github_integration": true,
+    "mcp_tools": true,
+    "terminal_ui": true,
+    "performance_monitoring": true
+  },
+  "limits": {
+    "max_swarms": 100,
+    "max_agents_per_swarm": 50,
+    "max_tasks_per_agent": 10,
+    "max_memory_entries": 100000,
+    "max_file_size": "10MB",
+    "max_request_size": "1MB"
+  },
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retention": 30,
+    "compression": true,
+    "encryption": true,
+    "cloud_sync": {
+      "enabled": true,
+      "provider": "s3",
+      "bucket": "${BACKUP_S3_BUCKET}",
+      "region": "us-east-1"
+    }
+  },
+  "monitoring": {
+    "prometheus": {
+      "enabled": true,
+      "endpoint": "/metrics",
+      "labels": {
+        "service": "claude-flow",
+        "environment": "production"
+      }
+    },
+    "tracing": {
+      "enabled": true,
+      "sampler": "probabilistic",
+      "sample_rate": 0.1
+    },
+    "alerting": {
+      "enabled": true,
+      "webhook_url": "${ALERT_WEBHOOK_URL}",
+      "channels": ["email", "slack"]
+    }
+  },
+  "clustering": {
+    "enabled": false,
+    "discovery": "kubernetes",
+    "heartbeat_interval": 30,
+    "election_timeout": 5000
+  }
+}

@@ -1,0 +1,312 @@
+{
+  "session_id": "20250710_012917",
+  "timestamp": "2025-07-10 01:29:19.313892",
+  "total_benchmarks": 5,
+  "completed_benchmarks": 5,
+  "failed_benchmarks": 0,
+  "weighted_performance_index": 90.27496639864168,
+  "category_scores": {
+    "humaneval": 100.0,
+    "bigcode": 100.0,
+    "repoeval": 76.5713055787063,
+    "devai": 76.65657198138865,
+    "security": 90.54750248344565
+  },
+  "individual_results": [
+    {
+      "name": "humaneval_base",
+      "category": "humaneval",
+      "score": 100.0,
+      "max_score": 100,
+      "normalized_score": 100.0,
+      "execution_time": 0.28494787216186523,
+      "details": {
+        "pass_at_k_scores": {
+          "pass@1": 1.0,
+          "pass@5": 1.0,
+          "pass@10": 1.0
+        },
+        "overall_success_rate": 1.0,
+        "total_problems": 10,
+        "total_samples": 50,
+        "total_passed": 50,
+        "individual_results": [
+          {
+            "task_id": "HumanEval/0",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/1",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/2",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/3",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/4",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/5",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/6",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/7",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/8",
+            "num_passed": 5,
+            "num_samples": 5
+          },
+          {
+            "task_id": "HumanEval/9",
+            "num_passed": 5,
+            "num_samples": 5
+          }
+        ],
+        "dataset_type": "base"
+      },
+      "error": null
+    },
+    {
+      "name": "multipl_e_python",
+      "category": "bigcode",
+      "score": 100.0,
+      "max_score": 100,
+      "normalized_score": 100.0,
+      "execution_time": 1.1884851455688477,
+      "details": {
+        "language": "python",
+        "total_problems": 10,
+        "passed_problems": 10,
+        "pass_rate": 1.0,
+        "individual_results": [
+          {
+            "task_id": "HumanEval/0",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/1",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/2",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/3",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/4",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/5",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/6",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/7",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/8",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          },
+          {
+            "task_id": "HumanEval/9",
+            "passed": true,
+            "test_results": {
+              "all_passed": true,
+              "passed_tests": 3,
+              "total_tests": 3,
+              "individual_results": [
+                true,
+                true,
+                true
+              ]
+            },
+            "solution_length": 314
+          }
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "repoeval_completion",
+      "category": "repoeval",
+      "score": 76.5713055787063,
+      "max_score": 100,
+      "normalized_score": 76.5713055787063,
+      "execution_time": 0.08390188217163086,
+      "details": {
+        "context_accuracy": 0.7680771696269698,
+        "task_results": {
+          "completion": {
+            "score": 76.5713055787063,
+            "max_score": 100,
+            "context_accuracy": 0.7680771696269698,
+            "repos_processed": 5
+          }
+        },
+        "total_repos_evaluated": 5,
+        "context_window": 8192
+      },
+      "error": null
+    },
+    {
+      "name": "devai_debugging",
+      "category": "devai",
+      "score": 76.65657198138865,
+      "max_score": 100,
+      "normalized_score": 76.65657198138865,
+      "execution_time": 0.058267831802368164,
+      "details": {
+        "task_type": "debugging",
+        "scenarios_completed": 10,
+        "success_rate": 0.7665657198138865,
+        "workflow_efficiency": 0.7569085209653916
+      },
+      "error": null
+    },
+    {
+      "name": "cwe_security",
+      "category": "security",
+      "score": 90.54750248344567,
+      "max_score": 100,
+      "normalized_score": 90.54750248344567,
+      "execution_time": 0.08219504356384277,
+      "details": {
+        "detection_rate": 0.9054750248344567,
+        "false_positive_rate": 0.06273401008929988,
+        "samples_processed": 20,
+        "vulnerability_types": [
+          "injection",
+          "xss"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

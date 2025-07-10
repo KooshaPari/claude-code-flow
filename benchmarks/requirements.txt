@@ -1,0 +1,81 @@
+# 🏆 Comprehensive SWE Intelligence Benchmarking Dependencies
+
+# Core framework
+asyncio
+pyyaml>=6.0
+tqdm>=4.65.0
+psutil>=5.9.0
+datasets>=2.14.0
+transformers>=4.33.0
+
+# Data processing and analysis
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.15.0
+
+# Machine learning and evaluation
+scikit-learn>=1.3.0
+torch>=2.0.0
+sentence-transformers>=2.2.0
+evaluate>=0.4.0
+
+# Code execution and testing
+subprocess32; python_version < "3.3"
+timeout-decorator>=0.5.0
+docker>=6.1.0
+gitpython>=3.1.32
+
+# Web framework for dashboard
+flask>=2.3.0
+flask-socketio>=5.3.0
+websockets>=11.0.0
+
+# Database and storage
+sqlite3
+redis>=4.6.0
+sqlalchemy>=2.0.0
+
+# Security and code analysis
+bandit>=1.7.5
+semgrep>=1.34.0
+safety>=2.3.5
+
+# API clients
+requests>=2.31.0
+openai>=0.27.8
+anthropic>=0.3.11
+github3.py>=4.0.1
+
+# Evaluation frameworks
+human-eval>=1.0.0
+code-eval>=0.1.0
+bigcode-evaluation-harness>=0.3.0
+
+# Utilities
+click>=8.1.0
+rich>=13.4.0
+colorama>=0.4.6
+python-dotenv>=1.0.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.7.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Documentation
+sphinx>=7.1.0
+sphinx-rtd-theme>=1.3.0
+
+# Performance monitoring
+memory-profiler>=0.61.0
+py-spy>=0.3.14
+cProfile
+
+# Optional: GPU support
+# torch-audio>=2.0.0
+# torch-vision>=0.15.0

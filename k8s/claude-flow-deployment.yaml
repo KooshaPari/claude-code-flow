@@ -1,0 +1,374 @@
+# Kubernetes Deployment for Claude Flow Production
+# Enterprise-grade Kubernetes deployment with auto-scaling and monitoring
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claude-flow
+  labels:
+    name: claude-flow
+    environment: production
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claude-flow-config
+  namespace: claude-flow
+data:
+  production.json: |
+    {
+      "environment": "production",
+      "server": {
+        "host": "0.0.0.0",
+        "port": 8080,
+        "workers": 4
+      },
+      "mcp": {
+        "host": "0.0.0.0",
+        "port": 8082,
+        "max_connections": 100
+      },
+      "database": {
+        "url": "sqlite:///app/data/claude-flow.db",
+        "pool_size": 10,
+        "timeout": 30
+      },
+      "logging": {
+        "level": "info",
+        "format": "json"
+      },
+      "metrics": {
+        "enabled": true,
+        "endpoint": "/metrics"
+      },
+      "security": {
+        "cors_enabled": true,
+        "rate_limit": {
+          "enabled": true,
+          "requests_per_minute": 100
+        }
+      }
+    }
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: claude-flow-secrets
+  namespace: claude-flow
+type: Opaque
+data:
+  # Base64 encoded secrets
+  db-password: Y2xhdWRlLWZsb3ctZGI=
+  redis-password: Y2xhdWRlLWZsb3ctcmVkaXM=
+  api-key: Y2xhdWRlLWZsb3ctYXBpLWtleQ==
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claude-flow-data
+  namespace: claude-flow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-flow
+  namespace: claude-flow
+  labels:
+    app: claude-flow
+    version: v2.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: claude-flow
+  template:
+    metadata:
+      labels:
+        app: claude-flow
+        version: v2.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: claude-flow
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: claude-flow
+        image: claude-flow:production
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 8082
+          name: mcp
+          protocol: TCP
+        env:
+        - name: CLAUDE_FLOW_ENV
+          value: "production"
+        - name: RUST_LOG
+          value: "info"
+        - name: CLAUDE_FLOW_CONFIG_DIR
+          value: "/app/config"
+        - name: CLAUDE_FLOW_DATA_DIR
+          value: "/app/data"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: claude-flow-secrets
+              key: db-password
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: claude-flow-secrets
+              key: redis-password
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+        - name: data-volume
+          mountPath: /app/data
+        - name: temp-volume
+          mountPath: /tmp
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30
+      volumes:
+      - name: config-volume
+        configMap:
+          name: claude-flow-config
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: claude-flow-data
+      - name: temp-volume
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+      - key: "app"
+        operator: "Equal"
+        value: "claude-flow"
+        effect: "NoSchedule"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-flow-service
+  namespace: claude-flow
+  labels:
+    app: claude-flow
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  - port: 8082
+    targetPort: 8082
+    protocol: TCP
+    name: mcp
+  selector:
+    app: claude-flow
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-flow-loadbalancer
+  namespace: claude-flow
+  labels:
+    app: claude-flow
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: claude-flow
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: claude-flow-hpa
+  namespace: claude-flow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: claude-flow
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 30
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: claude-flow
+  namespace: claude-flow
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: claude-flow
+  name: claude-flow-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: claude-flow-rolebinding
+  namespace: claude-flow
+subjects:
+- kind: ServiceAccount
+  name: claude-flow
+  namespace: claude-flow
+roleRef:
+  kind: Role
+  name: claude-flow-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: claude-flow-ingress
+  namespace: claude-flow
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - claude-flow.example.com
+    secretName: claude-flow-tls
+  rules:
+  - host: claude-flow.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: claude-flow-service
+            port:
+              number: 8080
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: claude-flow-pdb
+  namespace: claude-flow
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: claude-flow
+
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: claude-flow-monitor
+  namespace: claude-flow
+  labels:
+    app: claude-flow
+spec:
+  selector:
+    matchLabels:
+      app: claude-flow
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
