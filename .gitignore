@@ -89,3 +89,8 @@ claude-flow-mcp-wrapper
 # Test artifacts
 test-output/
 test-reports/
+
+
+# Added by cargo
+
+/target
