@@ -1,13 +1,14 @@
-# 🌊 Claude-Flow v2.0.0 Alpha: Revolutionary AI Orchestration Platform
+# 🌊 Klaude-Flow v2.0.0 Alpha: Revolutionary AI Orchestration Platform
+### K-themed Productivity Suite with Enterprise Claude Flow 2.0 Integration
 
 <div align="center">
 
-[![🌟 Star on GitHub](https://img.shields.io/github/stars/ruvnet/claude-code-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/ruvnet/claude-code-flow)
-[![📦 Alpha Release](https://img.shields.io/npm/v/claude-flow/alpha?style=for-the-badge&logo=npm&color=orange&label=v2.0.0-alpha)](https://www.npmjs.com/package/claude-flow/v/alpha)
-[![⚡ Claude Code](https://img.shields.io/badge/Claude%20Code-Optimized-green?style=for-the-badge&logo=anthropic)](https://github.com/ruvnet/claude-code-flow)
-[![🏛️ Agentics Foundation](https://img.shields.io/badge/Agentics-Foundation-crimson?style=for-the-badge&logo=openai)](https://discord.agentics.org)
-[![🐝 Hive-Mind](https://img.shields.io/badge/Hive--Mind-AI%20Coordination-purple?style=for-the-badge&logo=swarm)](https://github.com/ruvnet/claude-code-flow)
-[![🧠 Neural](https://img.shields.io/badge/Neural-87%20MCP%20Tools-blue?style=for-the-badge&logo=tensorflow)](https://github.com/ruvnet/claude-code-flow)
+[![🌟 Star on GitHub](https://img.shields.io/github/stars/KooshaPari/klaude-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/KooshaPari/klaude-flow)
+[![📦 Alpha Release](https://img.shields.io/npm/v/klaude-flow/alpha?style=for-the-badge&logo=npm&color=orange&label=v2.0.0-alpha.1)](https://www.npmjs.com/package/klaude-flow/v/alpha)
+[![⚡ Klaude Code](https://img.shields.io/badge/Klaude%20Code-Enhanced-green?style=for-the-badge&logo=anthropic)](https://github.com/KooshaPari/klaude-flow)
+[![🏛️ Claude Flow v2.0](https://img.shields.io/badge/Claude%20Flow-v2.0%20Integrated-crimson?style=for-the-badge&logo=openai)](https://github.com/KooshaPari/klaude-flow)
+[![🐝 Hive-Mind](https://img.shields.io/badge/Hive--Mind-AI%20Coordination-purple?style=for-the-badge&logo=swarm)](https://github.com/KooshaPari/klaude-flow)
+[![🧠 Neural](https://img.shields.io/badge/Neural-87%20MCP%20Tools-blue?style=for-the-badge&logo=tensorflow)](https://github.com/KooshaPari/klaude-flow)
 [![🛡️ MIT License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge&logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
 
 </div>
@@ -16,7 +17,7 @@
 
 ## 🌟 **Overview**
 
-**Claude-Flow v2.0.0 Alpha** is an enterprise-grade AI orchestration platform that revolutionizes how developers build with AI. By combining **hive-mind swarm intelligence**, **neural pattern recognition**, and **87 advanced MCP tools**, Claude-Flow enables unprecedented AI-powered development workflows.
+**Klaude-Flow v2.0.0 Alpha** is the revolutionary K-themed AI orchestration platform that integrates enterprise-grade Claude Flow 2.0 features with our signature productivity enhancements. By combining **hive-mind swarm intelligence**, **neural pattern recognition**, and **87 advanced MCP tools**, Klaude-Flow enables unprecedented AI-powered development workflows with the familiarity of our K-themed productivity suite.
 
 ### 🎯 **Key Features**
 
@@ -48,16 +49,17 @@ claude --dangerously-skip-permissions
 ### 🎯 **Instant Alpha Testing**
 
 ```bash
-# 1. Initialize Claude Flow with enhanced MCP setup (auto-configures permissions!)
-npx --y claude-flow@alpha init --force
+# 1. Initialize Klaude-Flow with Claude Flow 2.0 features (auto-configures permissions!)
+npx --y klaude-flow@alpha init --force
 
 # 2. Explore all revolutionary capabilities  
-npx --y claude-flow@alpha --help
+npx --y klaude-flow@alpha --help
 
 # 3. Launch the interactive hive-mind wizard
-npx --y claude-flow@alpha hive-mind wizard
+npx --y klaude-flow@alpha hive-mind wizard
 
-# 4. Build something amazing with AI coordination
+# 4. Build something amazing with AI coordination (both commands work)
+npx klaude-flow@alpha hive-mind spawn "build me something amazing" --claude
 npx claude-flow@alpha hive-mind spawn "build me something amazing" --claude
 ```
 
